@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from ..core.api_client import APIClient
-from ..core.utils import normalize_datetime
+from core.api_client import APIClient
+from core.utils import normalize_datetime
 
 class BaseEvent(ABC):
     def __init__(self, name: str):

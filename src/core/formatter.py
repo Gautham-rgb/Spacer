@@ -10,18 +10,16 @@ class TimelineFormatter:
             return
 
         events.sort(key=lambda x: x.get('time'))
-        print(f"
-▲ LIVE PRODUCTION EVENT GRAPH")
+        print(f"\n▲ LIVE PRODUCTION EVENT GRAPH")
         print("=" * 70)
         for ev in events:
-            from .utils import calculate_countdown
+            from core.utils import calculate_countdown
             category_tag = str(ev.get('category', 'EVENT')).upper()
             ev_time = ev.get('time')
             countdown = calculate_countdown(ev_time)
             print(f"[{ev_time.strftime('%Y-%m-%d %H:%M UTC')}] ({countdown})")
             print(f" └── [{category_tag}] {ev.get('title', 'Untitled')}")
-            print(f"      {ev.get('info', 'No details.')[:60]}...
-")
+            print(f"      {ev.get('info', 'No details.')[:60]}...\n")
         print("=" * 70)
 
     def render_markdown(self, events: list):
@@ -29,24 +27,18 @@ class TimelineFormatter:
             return "No events found for this timeframe."
 
         events.sort(key=lambda x: x.get('time'))
-        from .utils import calculate_countdown
+        from core.utils import calculate_countdown
         
-        headers, dividers, timestamps, countdowns, summaries = [], [], [], [], []
+        lines = []
         for ev in events:
             category_tag = str(ev.get('category', 'EVENT')).upper()
-            headers.append(f"**{category_tag}**")
-            dividers.append(" :--- ")
             ev_time = ev.get('time')
-            timestamps.append(f"`{ev_time.strftime('%m/%d %H:%M')}`")
-            countdowns.append(f"*{calculate_countdown(ev_time)}*")
-            summaries.append(f"**{ev.get('title')}**<br>{ev.get('info')[:45]}")
+            timestamp = ev_time.strftime('%m/%d %H:%M UTC') if ev_time else "Unknown"
+            countdown = calculate_countdown(ev_time)
+            
+            line = (f"• **[{category_tag}]** {ev.get('title', 'Untitled')}\n"
+                    f"  `{timestamp}` ({countdown})\n"
+                    f"  _{ev.get('info', 'No details')[:100]}...")
+            lines.append(line)
 
-        return (
-            f"| " + " | ".join(headers) + " |
-" + f"|" + "|".join(dividers) + "|
-" +
-            f"| " + " | ".join(timestamps) + " |
-" + f"| " + " | ".join(countdowns) + " |
-" +
-            f"| " + " | ".join(summaries) + " |"
-        )
+        return "\n\n".join(lines)

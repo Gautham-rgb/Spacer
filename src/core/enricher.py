@@ -1,7 +1,7 @@
 from groq import Groq
 import wikipedia
 from typing import Optional
-from .config import GROQ_API_KEY
+from core.config import GROQ_API_KEY
 
 class EventEnricher:
     def __init__(self):

@@ -1,10 +1,8 @@
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
-from .core.notifier import Notifier
-from .core.formatter import TimelineFormatter
-from .events.astronomy import AstronomyEvent
-from .events.probe import ProbeEvent
-from .events.weather import SpaceWeatherEvent
+from core.notifier import Notifier
+from core.formatter import TimelineFormatter
+from events.events import AstronomyEvent, ProbeEvent, SpaceWeatherEvent
 
 class SpaceEngine:
     def __init__(self):
@@ -24,11 +22,11 @@ class SpaceEngine:
 
     def run(self, track: str, action: str, after: Optional[datetime] = None, 
              before: Optional[datetime] = None, name: Optional[str] = None, 
-             webhook_url: Optional[str] = None):
-        
+             limit: Optional[int] = None, webhook_url: Optional[str] = None):
+
         targets = self.get_trackers(track)
         pool = []
-        
+
         # 1. Gather
         for t in targets:
             pool.extend(t.fetch_timeline_data())
@@ -42,6 +40,11 @@ class SpaceEngine:
         if before:
             filtered = [e for e in filtered if e['time'] <= before]
 
+        # Apply limit
+        if limit:
+            filtered = filtered[:limit]
+
+
         # 3. Action: Notify
         if action == "notify":
             now = datetime.now(timezone.utc)
@@ -51,8 +54,8 @@ class SpaceEngine:
                     if self.notifier.should_notify(ev['title']):
                         self.notifier.send_desktop_notification(
                             ev['title'], 
-                            f"{ev.get('info', 'No details')}
-Time: {ev['time'].strftime('%H:%M UTC')}"
+                            f"""{ev.get('info', 'No details')}
+                            Time: {ev['time'].strftime('%H:%M UTC')}"""
                         )
                         if webhook_url:
                             self.notifier.send_webhook(webhook_url, ev)
@@ -61,8 +64,7 @@ Time: {ev['time'].strftime('%H:%M UTC')}"
         else:
             if webhook_url:
                 markdown = self.formatter.render_markdown(filtered)
-                # Use notifier's api client to send the markdown timeline
-                self.notifier.api_client.post(webhook_url, {"content": f"### Live Timeline:
-{markdown}"})
+                # Use notifier's generic webhook method to handle provider-specific payload keys
+                self.notifier.send_generic_webhook(webhook_url, f"### Live Timeline:\n{markdown}")
             
             self.formatter.render_cli(filtered)

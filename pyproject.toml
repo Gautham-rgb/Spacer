@@ -1,0 +1,20 @@
+[project]
+name = "spacer-bot"
+version = "0.1.0"
+description = "A spacer bot project"
+dependencies = [
+    "requests",
+    "urllib3",
+    "skyfield",
+    "plyer",
+    "rich",
+    "groq",
+    "wikipedia",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+spacer = "CLI_bot.CLI:main"
