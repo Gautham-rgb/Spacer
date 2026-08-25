@@ -17,6 +17,7 @@ HELP_TEXT = (
     "space_events / probe_launch / probe_events)\n"
     "• `!space weather` — space-weather only\n"
     "• `!space launches` — upcoming launches\n"
+    "• `!space update` — check if a newer release is out\n"
     "• `!space version` — which build this is\n"
     "• `!space help` — this message"
 )
@@ -79,6 +80,14 @@ def dispatch(engine: SpaceEngine, cmd: str) -> CommandResult:
                              [{"type": "section",
                                "text": {"type": "mrkdwn", "text": msg}}],
                              [{"title": "Spacer", "description": msg, "color": 0x2B6CB0}])
+
+    if sub == "update":
+        from core.updates import check_for_update
+        msg = check_for_update()
+        return CommandResult(msg,
+                             [{"type": "section",
+                               "text": {"type": "mrkdwn", "text": msg}}],
+                             [{"title": "Spacer update", "description": msg, "color": 0x2B6CB0}])
 
     track = _TRACK_ALIASES.get(sub, "all")
     if sub == "list" and len(parts) > 1:

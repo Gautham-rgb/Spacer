@@ -57,6 +57,9 @@ def create_app(engine: SpaceEngine | None = None):
     ui.label(SITE_NAME).classes("text-3xl font-bold tracking-tight")
     ui.label("Upcoming space weather, launches, and sky alignments.").classes("text-sm text-gray-500")
 
+    from core.updates import check_for_update
+    ui.label(check_for_update()).classes("text-xs text-gray-400")
+
     track = ui.select(TRACKS, value="all", label="Track")
     with ui.row():
         after = ui.input("After (YYYY-MM-DD)")
