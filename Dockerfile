@@ -9,5 +9,6 @@ COPY . .
 
 RUN pip install --no-cache-dir .
 
-# Default command is overridden per-service in docker-compose.yml.
-CMD ["spacer"]
+# Default: serve the web app (and any bots whose tokens are set).
+# The docker-compose.yml overrides this per-service (web / slack / discord).
+CMD ["python", "app.py"]
