@@ -1,5 +1,4 @@
 import os
-from plyer import notification
 from core.api_client import APIClient
 from core.config import DEFAULT_CACHE_FILE
 
@@ -7,6 +6,7 @@ class Notifier:
     def __init__(self, cache_file: str = DEFAULT_CACHE_FILE):
         self.cache_file = cache_file
         self.api_client = APIClient()
+        self._notification = None  # plyer is imported lazily (headless-safe)
 
     def should_notify(self, event_title: str) -> bool:
         if not os.path.exists(self.cache_file):
@@ -23,8 +23,17 @@ class Notifier:
         return True
 
     def send_desktop_notification(self, title: str, message: str):
+        # plyer needs a display; on a headless server this is a no-op.
+        if self._notification is None:
+            try:
+                from plyer import notification
+                self._notification = notification
+            except Exception:
+                self._notification = False
+        if not self._notification:
+            return
         try:
-            notification.notify( #type: ignore
+            self._notification.notify(
                 title=f"Spacer Alert: {title}",
                 message=message,
                 timeout=10

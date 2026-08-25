@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.bsp
+!de421.bsp
 *.py[cod]
 *$py.class
 *.so

@@ -1,9 +1,5 @@
 import requests
-from urllib3.exceptions import InsecureRequestWarning
-from urllib3 import disable_warnings
 from typing import Tuple, Any, Optional
-
-disable_warnings(category=InsecureRequestWarning)
 
 class APIClient:
     def __init__(self):
@@ -14,7 +10,7 @@ class APIClient:
 
     def get(self, url: str, params: Optional[dict] = None, timeout: int = 12) -> Tuple[Optional[Any], Optional[str]]:
         try:
-            response = requests.get(url, params=params, headers=self.headers, timeout=timeout, verify=False)
+            response = requests.get(url, params=params, headers=self.headers, timeout=timeout)
             if response.status_code != 200:
                 return None, f"HTTP Error {response.status_code}: {response.text[:80]}"
             return response.json(), None
@@ -25,7 +21,7 @@ class APIClient:
 
     def post(self, url: str, json_data: dict, timeout: int = 10) -> Tuple[bool, Optional[str]]:
         try:
-            response = requests.post(url, json=json_data, timeout=timeout, verify=False)
+            response = requests.post(url, json=json_data, timeout=timeout)
             if response.status_code in [200, 204]:
                 return True, None
             return False, f"HTTP Error {response.status_code}"

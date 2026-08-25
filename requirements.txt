@@ -1,0 +1,12 @@
+requests
+urllib3
+skyfield
+plyer
+rich
+groq
+wikipedia
+ttkbootstrap
+nicegui
+slack_sdk
+discord.py
+python-dotenv

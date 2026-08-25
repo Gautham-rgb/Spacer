@@ -1,7 +1,7 @@
 [project]
 name = "spacer-bot"
-version = "0.1.0"
-description = "A spacer bot project"
+description = "A spacer bot: space-weather, astronomy, and launch events for CLI, Slack, Discord, desktop, and web."
+dynamic = ["version"]
 dependencies = [
     "requests",
     "urllib3",
@@ -10,11 +10,30 @@ dependencies = [
     "rich",
     "groq",
     "wikipedia",
+    "ttkbootstrap",
+    "nicegui",
+    "slack_sdk",
+    "discord.py",
+    "python-dotenv",
 ]
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+py-modules = ["engine", "version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.scripts]
 spacer = "CLI_bot.CLI:main"
+spacer-gui = "gui.app:main"
+spacer-web = "web.app:main"
+spacer-serve = "web.app:serve"
