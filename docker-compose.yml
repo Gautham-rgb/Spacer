@@ -1,0 +1,28 @@
+# Three containers, one image, each runs a single mode.
+# Tokens come from the host `.env` (injected at runtime, never baked in).
+
+services:
+  web:
+    build: .
+    command: spacer-web
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  slack:
+    build: .
+    command: spacer --slack
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  discord:
+    build: .
+    command: spacer --discord
+    env_file:
+      - .env
+    restart: unless-stopped

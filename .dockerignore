@@ -1,0 +1,18 @@
+# Secrets — never bake these into the image; compose injects them at runtime.
+.env
+.env.*
+
+# Python / build junk
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+dist/
+build/
+
+# VCS / local
+.git/
+.venv/
+
+# The bundled JPL ephemeris is large but SHOULD be copied into the image,
+# so it is intentionally NOT listed here.

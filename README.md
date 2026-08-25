@@ -1,93 +1,104 @@
 # Spacer
 
-A CLI tool / Slack / Discord bot that lets space enthusiasts track upcoming
-space events — solar flares, CMEs, planetary conjunctions, and rocket launches.
+Spacer pulls together upcoming space stuff — solar weather, rocket launches,
+and planetary events — and lets you look at it from a few different places:
+the terminal, Slack, Discord, a desktop window, or a web page.
 
-Spacer has **one headless engine** (`SpaceEngine.get_events`) that every
-front-end consumes. No fetching logic is duplicated across the CLI, chat bots,
-desktop GUI, or web app.
-
-## Features
-
-- **CLI** — `spacer [track] [list|notify]` with date-range, name, and limit filters.
-- **Slack bot** — Socket Mode app, replies to `!space list|weather|launches|version|help`
-  with Block Kit messages (needs `SLACK_BOT_TOK` + `SLACK_APP_TOK`).
-- **Discord bot** — discord.py app, same `!space` commands, replies with Embeds
-  (needs `DISCORD_BOT_TOK`).
-- **Desktop GUI** — native window via `ttkbootstrap` (`spacer-gui`).
-- **Web app** — NiceGUI dashboard, deployable on Hack Club Nest / Hugging Face
-  Spaces (`spacer-web`, or run the repo-root `app.py`).
-- **Version + update check** — single-source `__version__`
-  (`src/version.py`), shown in the CLI banner and `--version`, with
-  `spacer --check-update` querying PyPI.
+There's one core function, `SpaceEngine.get_events(...)`, that does all the
+fetching and filtering. Everything else (the CLI, the bots, the GUI, the web
+page) just calls it, so the actual logic only lives in one spot.
 
 ## Install
 
-```bash
-pip install -e .        # or: pip install -r requirements.txt
+```
+pip install -e .
 ```
 
-Optional chat-bot extras: `slack_sdk` and `discord.py` are already listed; set
-the tokens in your environment (see `.env`).
+That gives you the `spacer`, `spacer-gui`, `spacer-web`, and `spacer-serve`
+commands.
 
-## Usage
+## Using it from the terminal
 
-```bash
-# CLI
-spacer all list --limit 10
-spacer space_weather notify
-spacer --version
-spacer --check-update
+```
+spacer                                  # everything, listed
+spacer space_weather notify             # ping me about weather in the next hour
+spacer probe_launch list --limit 10
+spacer all list --after 2026-01-01 --before 2026-12-31 --name mars
+```
 
-# Chat bots (interactive, listen for "!space ...")
+Flags you can use: `--after` and `--before` (YYYY-MM-DD), `--name`, `--limit`,
+`--webhook`. Also `--version`, `--check-update`, `--slack`, `--discord`.
+
+The `--slack` and `--discord` flags start the chat bots (see below). For just
+the desktop window run `spacer-gui`; for just the web page run `spacer-web`.
+
+## Slack and Discord
+
+Both bots listen for `!space` commands in whatever channel they can see:
+
+- `!space list [track]` — events. The track is `all`, `space_weather`,
+  `space_events`, `probe_launch`, or `probe_events`.
+- `!space weather` — just space weather.
+- `!space launches` — just launches.
+- `!space version` — which build is running.
+- `!space help` — shows the above.
+
+Run them with:
+
+```
 spacer --slack
 spacer --discord
-
-# Desktop GUI
-spacer-gui
-
-# Web (Hack Club Nest / HF Spaces)
-spacer-web
-
-# Web + chat bots on one server (Nest/HF entry point)
-spacer-serve
 ```
 
-## Running on a server (Hack Club Nest)
+They read tokens from `.env`: Slack wants `SLACK_BOT_TOK` and
+`SLACK_APP_TOK`, Discord wants `DISCORD_BOT_TOK`. The `.env` file is
+gitignored, so set those locally or as environment variables on your server.
 
-The web app and the chat bots can run on the **same** server process. The web
-app owns the main thread (bound to ``0.0.0.0:$PORT``); any bot whose tokens
-are present in the environment starts automatically in a background thread:
+Slack side of things: turn on Socket Mode in your app, give the bot the
+`chat:write` and `*-history` scopes, and subscribe to the `message.*` events.
+Discord side: make a bot, switch on the Message Content intent, and invite it
+with the Send Messages permission.
 
-- `spacer-serve` (or the repo-root `app.py`) runs web + Slack + Discord together.
-- A `Procfile` is included: `web: python app.py`, which is what Nest boots.
-- Set `SLACK_BOT_TOK` + `SLACK_APP_TOK` and/or `DISCORD_BOT_TOK`; missing tokens
-  simply mean that bot doesn't start — the web server keeps running.
-- Desktop notifications (plyer) are skipped automatically on headless servers.
+## Running it on a server
+
+If you want the web page and the bots all at once, `spacer-serve` runs them in
+a single process — the web app takes the main thread and the bots run in the
+background. There's a `Procfile` (`web: python app.py`) for platforms like
+Hack Club Nest that boot from that file. On Nest, set the tokens as secrets
+and it'll serve the page and start whichever bots have tokens.
+
+## Docker
+
+You can also run each mode in its own container. One image, three services:
+
+```
+docker compose up --build
+```
+
+That starts `web` (the page on port 8080), `slack`, and `discord`. The
+`de421.bsp` file (the astronomy data) is baked into the image; your `.env` is
+not — compose passes it in at runtime instead.
+
+To run just one of them: `docker compose up --build web`, and so on.
 
 ## Configuration
 
-Set these in `.env` (the repo already includes example Slack tokens):
-
-- `SLACK_BOT_TOK`, `SLACK_APP_TOK` — Slack Socket Mode app.
+- `SLACK_BOT_TOK`, `SLACK_APP_TOK` — Slack app tokens (Socket Mode).
 - `DISCORD_BOT_TOK` — Discord bot token.
-- `API_KEY` — thespacedevs API key (defaults to `DEMO_KEY`).
-- `GROQ_API_KEY` — optional, used to enrich launch descriptions.
+- `API_KEY` — thespacedevs key (falls back to `DEMO_KEY` if unset).
+- `GROQ_API_KEY` — optional, used to fill in launch descriptions.
 
-## Project layout
+## How the code is laid out
 
-- `src/engine.py` — `SpaceEngine`: gather + filter, the single source of truth.
-- `src/events/` — `SpaceWeatherEvent`, `ProbeEvent`, `AstronomyEvent`.
-- `src/core/` — `APIClient`, `Notifier`, `TimelineFormatter`, `EventEnricher`,
-  `EventCache`, `bot_base` (shared chat logic), `slack_bot`, `discord_bot`,
-  `updates` (PyPI check).
-- `src/CLI_bot/CLI.py` — argparse entry point (`spacer`).
-- `src/gui/app.py` — ttkbootstrap desktop window (`spacer-gui`).
-- `src/web/app.py` — NiceGUI web app (`spacer-web`); `app.py` at root boots it.
+- `src/engine.py` — `SpaceEngine`, the core. Gather + filter, returns events.
+- `src/events/` — where each kind of event is fetched (weather, launches,
+  astronomy).
+- `src/core/` — the supporting pieces: API client, notifier, formatter,
+  enricher, cache, the chat-bot shared logic (`bot_base`), the Slack/Discord
+  adapters, and the version/update check.
+- `src/CLI_bot/CLI.py` — the terminal entry point.
+- `src/gui/app.py` — the desktop window (`spacer-gui`).
+- `src/web/app.py` — the web page (`spacer-web`); the `app.py` at the repo
+  root boots it for hosting.
 
-## Roadmap status
-
-- [x] Phase 0 — engine refactor + `Event` model + stable `get_events`.
-- [x] Phase 1 — desktop GUI (ttkbootstrap).
-- [x] Phase 2 — web app (NiceGUI, Nest/HF ready).
-- [x] Phase 3 — caching, shared config, Slack + Discord, version/update check.
+That's the whole thing.
