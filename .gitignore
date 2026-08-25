@@ -53,3 +53,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Runtime artifacts (caches / notification state)
+.spacer_cache.json
+notified_events.txt
