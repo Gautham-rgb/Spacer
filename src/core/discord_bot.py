@@ -8,6 +8,7 @@ without it installed. Set ``DISCORD_BOT_TOK`` in your environment to run it.
 from __future__ import annotations
 
 import os
+import re
 
 from core.env import load_env
 from core.bot_base import dispatch
@@ -55,12 +56,17 @@ class DiscordBot:
             if message.author == self.client.user:
                 return
             content = message.content.strip()
-            if not content.lower().startswith("!space"):
-                return
-            cmd = content[len("!space"):].strip()
-            result = dispatch(self.engine, cmd)
-            for embed_data in result.discord_embeds:
-                await message.channel.send(embed=self._to_embed(embed_data))
+            low = content.lower()
+            if low.startswith("!space"):
+                cmd = content[len("!space"):].strip()
+                result = dispatch(self.engine, cmd)
+                for embed_data in result.discord_embeds:
+                    await message.channel.send(embed=self._to_embed(embed_data))
+            elif low.startswith(("!groq", "!ask", "!ai")):
+                prompt = re.sub(r"^!(groq|ask|ai)\s*", "", content, flags=re.I).strip()
+                from core.groq_chat import groq_chat
+                answer = groq_chat(prompt) if prompt else "Usage: !groq <question>"
+                await message.channel.send(answer[:2000])
 
     @staticmethod
     def _to_embed(data: dict):

@@ -51,11 +51,6 @@ class SlackBot:
         )
         self.client.socket_mode_request_listeners.append(self._on_request)
 
-    @staticmethod
-    def _extract_command(body: str) -> str:
-        m = re.search(r"!space\s*(.*)", body, re.IGNORECASE)
-        return m.group(1).strip() if m else ""
-
     def _reply(self, channel: str, blocks) -> None:
         self.client.web_client.chat_postMessage(
             channel=channel, text="Spacer", blocks=blocks
@@ -68,10 +63,21 @@ class SlackBot:
             if req.type == "events_api":
                 event = req.payload.get("event", {})
                 if event.get("type") == "message" and "subtype" not in event:
-                    cmd = self._extract_command(event.get("text", ""))
-                    if cmd:
+                    text = event.get("text", "")
+                    low = text.lower()
+                    channel = event.get("channel", "")
+                    if low.startswith("!space"):
+                        cmd = re.sub(r"^!space\s*", "", text, flags=re.I).strip()
                         result = dispatch(self.engine, cmd)
-                        self._reply(event.get("channel", ""), result.slack_blocks)
+                        self._reply(channel, result.slack_blocks)
+                    elif low.startswith(("!groq", "!ask", "!ai")):
+                        prompt = re.sub(r"^!(groq|ask|ai)\s*", "", text, flags=re.I).strip()
+                        from core.groq_chat import groq_chat
+                        answer = groq_chat(prompt) if prompt else "Usage: !groq <question>"
+                        self._reply(channel, [{
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": answer[:2900]},
+                        }])
         finally:
             client.send_socket_mode_response(
                 SocketModeResponse(envelope_id=req.envelope_id)

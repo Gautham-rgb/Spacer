@@ -19,7 +19,8 @@ HELP_TEXT = (
     "• `!space launches` — upcoming launches\n"
     "• `!space update` — check if a newer release is out\n"
     "• `!space version` — which build this is\n"
-    "• `!space help` — this message"
+    "• `!space help` — this message\n"
+    "• `!groq <question>` — ask the Groq AI assistant (works in any channel)"
 )
 
 _TRACK_ALIASES = {

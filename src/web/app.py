@@ -14,6 +14,7 @@ consume the same headless engine — no fetching logic is duplicated here.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import threading
 from datetime import datetime, timezone
@@ -92,6 +93,28 @@ def create_app(engine: SpaceEngine | None = None):
 
     ui.button("Refresh", on_click=refresh).classes("mt-2")
     refresh()
+
+    # --- Groq chat ---
+    from core.groq_chat import groq_chat
+
+    with ui.card().classes("w-full no-shadow border mt-4"):
+        ui.label("Ask Groq").classes("text-lg font-semibold")
+        ui.label("Powered by Groq — ask anything.").classes("text-xs text-gray-400")
+        groq_input = ui.input("Your question").classes("w-full")
+        groq_out = ui.label("").style("white-space: pre-wrap")
+        groq_out.classes("text-sm")
+
+        async def _ask_groq() -> None:
+            prompt = (groq_input.value or "").strip()
+            if not prompt:
+                groq_out.set_text("Type a question first.")
+                return
+            groq_out.set_text("Thinking…")
+            answer = await asyncio.to_thread(groq_chat, prompt)
+            groq_out.set_text(answer)
+
+        ui.button("Ask", on_click=_ask_groq).classes("mt-2")
+
     return ui
 
 
