@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import os
 
-from core.config import GROQ_API_KEY
+from core.config import GROQ_API_KEY, GROQ_MODEL
 
-GROQ_CHAT_MODEL = "llama-3.3-70b-versatile"
+GROQ_CHAT_MODEL = GROQ_MODEL
 _SYSTEM = (
     "You are Spacer's assistant: friendly, concise, and focused on space, "
     "astronomy, and science when relevant."

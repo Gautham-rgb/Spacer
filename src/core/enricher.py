@@ -1,10 +1,8 @@
 from groq import Groq
 import wikipedia
 from typing import Optional
-from core.config import GROQ_API_KEY
+from core.config import GROQ_API_KEY, GROQ_MODEL
 
-# Real Groq-served models (not OpenAI's "gpt-4o").
-GROQ_MODEL = "llama-3.3-70b-versatile"
 
 class EventEnricher:
     def __init__(self):
