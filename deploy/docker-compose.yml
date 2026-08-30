@@ -1,21 +1,25 @@
 # Three containers, one image, each runs a single mode.
-# Tokens come from the host `.env` (injected at runtime, never baked in).
+# Tokens come from the repo-root `.env` (injected at runtime, never baked in).
 #
-# `web` binds 8080; `caddy` reverse-proxies it to the public internet (and
-# handles NiceGUI's websocket for the live UI). Bring up just the site with
-#   docker compose up -d web caddy
+# Run from this directory (deploy/):
+#   docker compose up -d web caddy      # site on :80 (use your Nest domain for HTTPS)
 # Or run all three (web + Slack + Discord) behind the proxy.
+#
+# Build context is the repo root (..) so the Dockerfile can COPY app.py and
+# the bundled de421.bsp; the Dockerfile itself lives in this deploy/ folder.
 
 services:
   web:
-    build: .
+    build:
+      context: ..
+      dockerfile: Dockerfile
     command: spacer-web
     expose:
       - "8080"
     environment:
       - PORT=8080
     env_file:
-      - .env
+      - ../.env
     restart: unless-stopped
 
   caddy:
@@ -32,17 +36,21 @@ services:
     restart: unless-stopped
 
   slack:
-    build: .
+    build:
+      context: ..
+      dockerfile: Dockerfile
     command: spacer --slack
     env_file:
-      - .env
+      - ../.env
     restart: unless-stopped
 
   discord:
-    build: .
+    build:
+      context: ..
+      dockerfile: Dockerfile
     command: spacer --discord
     env_file:
-      - .env
+      - ../.env
     restart: unless-stopped
 
 volumes:

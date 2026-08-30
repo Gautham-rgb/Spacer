@@ -97,22 +97,33 @@ flip it on, or use the `/space` slash command instead.
 
 If you want the web page and the bots together, `spacer-serve` runs them in one
 process — the web app takes the main thread, the bots run in the background.
-There's a `Procfile` (`web: python app.py`) for platforms like Hack Club Nest
-that boot from that, and a `Dockerfile` too.
 
-On Nest: connect the repo, set the tokens as secrets, and it'll serve the page
-and start whichever bots have tokens. You can also just clone it,
-`pip install -e .`, export the tokens, and run `python app.py` inside a `tmux`
-session so it survives you logging off.
+On Nest: clone the repo, set the tokens as secrets in the repo-root `.env`, and
+bring it up with Docker Compose from the `deploy/` folder (see below). You can
+also just clone it, `pip install -e .`, export the tokens, and run
+`python app.py` inside a `tmux` session so it survives you logging off.
+
+The repo is laid out as:
+
+```
+spacer_bot/
+├── app.py            # Nest entrypoint (must stay at repo root)
+├── pyproject.toml    # packaging + dependencies (single source of truth)
+├── de421.bsp         # bundled JPL ephemeris (used by the astronomy tracker)
+├── .env / .gitignore / .dockerignore / LICENSE / README.md
+├── src/              # all the Python code (engine, core/, events/, web/, ...)
+├── deploy/           # Dockerfile, docker-compose.yml, Caddyfile, requirements.txt
+└── docs/             # ROADMAP.md
+```
 
 Binding to `0.0.0.0:$PORT` is necessary but not enough to make the site public
-— Nest is a plain Linux VPS, so you also need a reverse proxy. The included
-`Caddyfile` proxies the app (which listens on `localhost:8080`) and passes
-through NiceGUI's websocket for the live UI:
+— Nest is a plain Linux VPS, so you also need a reverse proxy. The `Caddyfile`
+(in `deploy/`) proxies the app and passes through NiceGUI's websocket for the
+live UI. Bring it all up with:
 
 ```bash
-docker compose up -d web      # maps 8080 on the host
-caddy run --config Caddyfile  # or: put Caddy in front of the container
+cd deploy
+docker compose up -d web caddy   # site on :80; use your Nest domain for HTTPS
 ```
 
 Without the proxy (or a port forward), the page only listens inside the
@@ -123,14 +134,14 @@ container and won't be reachable from the internet.
 One image, three services:
 
 ```bash
-docker compose up --build
+cd deploy && docker compose up --build
 ```
 
 That starts `web` (page on port 8080), `slack`, and `discord`. The `de421.bsp`
 astronomy file is baked into the image; your `.env` is not — compose passes it
 in at runtime.
 
-Run just one: `docker compose up --build web`.
+Run just one: `cd deploy && docker compose up --build web`.
 
 ## Configuration
 
@@ -139,7 +150,7 @@ Run just one: `docker compose up --build web`.
 | `SLACK_BOT_TOK`, `SLACK_APP_TOK` | Slack app tokens (Socket Mode). |
 | `DISCORD_BOT_TOK` | Discord bot token. |
 | `API_KEY` | thespacedevs key (falls back to `DEMO_KEY`). |
-| `GROQ_API_KEY` | optional; powers `!groq` and the web chat box. |
+| `GROQ_API_KEY` | optional; powers event enrichment and the web chat box. |
 | `PORT` | port the web server binds (default 8080). |
 
 ## How the code is laid out
