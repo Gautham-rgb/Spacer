@@ -12,7 +12,7 @@ services:
   web:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: deploy/Dockerfile
     command: spacer-web
     expose:
       - "8080"
@@ -38,7 +38,7 @@ services:
   slack:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: deploy/Dockerfile
     command: spacer --slack
     env_file:
       - ../.env
@@ -47,7 +47,7 @@ services:
   discord:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: deploy/Dockerfile
     command: spacer --discord
     env_file:
       - ../.env
