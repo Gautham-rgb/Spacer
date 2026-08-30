@@ -51,82 +51,91 @@ def build_event_cards(container, events: list[dict]) -> None:
 
 
 def create_app(engine: SpaceEngine | None = None):
+    """Build the NiceGUI page and return it as the ``root`` page function.
+
+    NiceGUI 3.x expects a ``root`` callable (a ``ui.page`` function) rather than
+    global-scope UI, especially when the app is launched through a console-script
+    entry point. Returning a callable keeps the route at ``/`` registered so the
+    auto-index fallback never has to re-run the entry script (which would crash).
+    """
     from nicegui import ui
 
     engine = engine or SpaceEngine()
 
-    ui.label(SITE_NAME).classes("text-3xl font-bold tracking-tight")
-    ui.label("Upcoming space weather, launches, and sky alignments.").classes("text-sm text-gray-500")
+    def root() -> None:
+        ui.label(SITE_NAME).classes("text-3xl font-bold tracking-tight")
+        ui.label("Upcoming space weather, launches, and sky alignments.").classes(
+            "text-sm text-gray-500")
 
-    from core.updates import check_for_update
-    ui.label(check_for_update()).classes("text-xs text-gray-400")
+        from core.updates import check_for_update
+        ui.label(check_for_update()).classes("text-xs text-gray-400")
 
-    track = ui.select(TRACKS, value="all", label="Track")
-    with ui.row():
-        after = ui.input("After (YYYY-MM-DD)")
-        before = ui.input("Before (YYYY-MM-DD)")
-        name = ui.input("Name filter")
-        limit = ui.number("Limit", value=20, min=1, max=200)
+        track = ui.select(TRACKS, value="all", label="Track")
+        with ui.row():
+            after = ui.input("After (YYYY-MM-DD)")
+            before = ui.input("Before (YYYY-MM-DD)")
+            name = ui.input("Name filter")
+            limit = ui.number("Limit", value=20, min=1, max=200)
 
-    status = ui.label("")
-    results = ui.column().classes("w-full gap-2")
+        status = ui.label("")
+        results = ui.column().classes("w-full gap-2")
 
-    def _parse(date_str: str) -> datetime | None:
-        if not date_str:
-            return None
-        try:
-            return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        except ValueError:
-            return None
+        def _parse(date_str: str) -> datetime | None:
+            if not date_str:
+                return None
+            try:
+                return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except ValueError:
+                return None
 
-    async def refresh() -> None:
-        status.set_text("Fetching space data...")
-        try:
-            # Run the (potentially slow, network + Skyfield) fetch off the UI
-            # loop so the page binds and renders immediately instead of blocking
-            # until every event is gathered.
-            events = await asyncio.to_thread(
-                engine.get_events,
-                track=track.value,
-                after=_parse(after.value),
-                before=_parse(before.value),
-                name=name.value or None,
-                limit=int(limit.value or 20),
-            )
-        except Exception as exc:  # a fetch failure must never kill the page
-            status.set_text(f"Could not load events: {exc}")
-            return
-        build_event_cards(results, events)
-        status.set_text(f"Showing {len(events)} event(s).")
-
-    ui.button("Refresh", on_click=refresh).classes("mt-2")
-    # Defer the first fetch so the server binds its port before the heavy
-    # astronomy/Skyfield search runs (Nest's health check would otherwise
-    # time out and report "no website").
-    ui.timer(0.05, refresh, once=True)
-
-    # --- Groq chat ---
-    from core.groq_chat import groq_chat
-
-    with ui.card().classes("w-full no-shadow border mt-4"):
-        ui.label("Ask Groq").classes("text-lg font-semibold")
-        ui.label("Powered by Groq — ask anything.").classes("text-xs text-gray-400")
-        groq_input = ui.input("Your question").classes("w-full")
-        groq_out = ui.label("").style("white-space: pre-wrap")
-        groq_out.classes("text-sm")
-
-        async def _ask_groq() -> None:
-            prompt = (groq_input.value or "").strip()
-            if not prompt:
-                groq_out.set_text("Type a question first.")
+        async def refresh() -> None:
+            status.set_text("Fetching space data...")
+            try:
+                # Run the (potentially slow, network + Skyfield) fetch off the UI
+                # loop so the page binds and renders immediately instead of blocking
+                # until every event is gathered.
+                events = await asyncio.to_thread(
+                    engine.get_events,
+                    track=track.value,
+                    after=_parse(after.value),
+                    before=_parse(before.value),
+                    name=name.value or None,
+                    limit=int(limit.value or 20),
+                )
+            except Exception as exc:  # a fetch failure must never kill the page
+                status.set_text(f"Could not load events: {exc}")
                 return
-            groq_out.set_text("Thinking…")
-            answer = await asyncio.to_thread(groq_chat, prompt)
-            groq_out.set_text(answer)
+            build_event_cards(results, events)
+            status.set_text(f"Showing {len(events)} event(s).")
 
-        ui.button("Ask", on_click=_ask_groq).classes("mt-2")
+        ui.button("Refresh", on_click=refresh).classes("mt-2")
+        # Defer the first fetch so the server binds its port before the heavy
+        # astronomy/Skyfield search runs (Nest's health check would otherwise
+        # time out and report "no website").
+        ui.timer(0.05, refresh, once=True)
 
-    return ui
+        # --- Groq chat ---
+        from core.groq_chat import groq_chat
+
+        with ui.card().classes("w-full no-shadow border mt-4"):
+            ui.label("Ask Groq").classes("text-lg font-semibold")
+            ui.label("Powered by Groq — ask anything.").classes("text-xs text-gray-400")
+            groq_input = ui.input("Your question").classes("w-full")
+            groq_out = ui.label("").style("white-space: pre-wrap")
+            groq_out.classes("text-sm")
+
+            async def _ask_groq() -> None:
+                prompt = (groq_input.value or "").strip()
+                if not prompt:
+                    groq_out.set_text("Type a question first.")
+                    return
+                groq_out.set_text("Thinking…")
+                answer = await asyncio.to_thread(groq_chat, prompt)
+                groq_out.set_text(answer)
+
+            ui.button("Ask", on_click=_ask_groq).classes("mt-2")
+
+    return root
 
 
 def _start_bots() -> None:
@@ -171,8 +180,8 @@ def serve() -> None:
     _start_bots()
     from nicegui import ui
 
-    create_app()
     ui.run(
+        create_app(),
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 8080)),
         reload=False,
@@ -184,8 +193,8 @@ def serve() -> None:
 def main() -> None:
     from nicegui import ui
 
-    create_app()
     ui.run(
+        create_app(),
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 8080)),
         reload=False,
