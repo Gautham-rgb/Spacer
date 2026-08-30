@@ -1,12 +1,18 @@
-# Three containers, one image, each runs a single mode.
+# Web (Nest target port 80) + Slack + Discord, one image.
 # Tokens come from the repo-root `.env` (injected at runtime, never baked in).
 #
 # Run from this directory (deploy/):
-#   docker compose up -d web caddy      # site on :80 (use your Nest domain for HTTPS)
-# Or run all three (web + Slack + Discord) behind the proxy.
+#   docker compose up -d web slack discord     # all services
+#   docker compose up -d web                   # website only
+#
+# Nest notes:
+#   - Nest's proxy expects your app to listen on port 80 (see your Nest
+#     Domains panel: "Target Port: 80"). We bind the web app to 80 here.
+#   - Point your domain at systemic-speed.hackclub.app; Nest terminates HTTPS,
+#     so we do NOT run our own Caddy anymore.
 #
 # Build context is the repo root (..) so the Dockerfile can COPY app.py and
-# the bundled de421.bsp; the Dockerfile itself lives in this deploy/ folder.
+# the bundled de421.bsp; the Dockerfile lives in this deploy/ folder.
 
 services:
   web:
@@ -14,25 +20,12 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     command: spacer-web
-    expose:
-      - "8080"
-    environment:
-      - PORT=8080
-    env_file:
-      - ../.env
-    restart: unless-stopped
-
-  caddy:
-    image: caddy:2-alpine
-    depends_on:
-      - web
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+    environment:
+      - PORT=80
+    env_file:
+      - ../.env
     restart: unless-stopped
 
   slack:
@@ -52,7 +45,3 @@ services:
     env_file:
       - ../.env
     restart: unless-stopped
-
-volumes:
-  caddy_data:
-  caddy_config:

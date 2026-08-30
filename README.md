@@ -112,22 +112,25 @@ spacer_bot/
 ├── de421.bsp         # bundled JPL ephemeris (used by the astronomy tracker)
 ├── .env / .gitignore / .dockerignore / LICENSE / README.md
 ├── src/              # all the Python code (engine, core/, events/, web/, ...)
-├── deploy/           # Dockerfile, docker-compose.yml, Caddyfile, requirements.txt
+├── deploy/           # Dockerfile, docker-compose.yml, requirements.txt
 └── docs/             # ROADMAP.md
 ```
 
-Binding to `0.0.0.0:$PORT` is necessary but not enough to make the site public
-— Nest is a plain Linux VPS, so you also need a reverse proxy. The `Caddyfile`
-(in `deploy/`) proxies the app and passes through NiceGUI's websocket for the
-live UI. Bring it all up with:
+**Nest serves the site on port 80.** In your Nest Domains panel the target port
+is `80`, and any custom domain must be pointed at `systemic-speed.hackclub.app`.
+Nest terminates HTTPS, so we do **not** run our own reverse proxy. The `web`
+service binds the app to port 80 inside the container:
 
 ```bash
 cd deploy
-docker compose up -d web caddy   # site on :80; use your Nest domain for HTTPS
+docker compose up -d web slack discord   # website + both bots
+# or just: docker compose up -d web       # website only
 ```
 
-Without the proxy (or a port forward), the page only listens inside the
-container and won't be reachable from the internet.
+Then open your site at `https://systemic-speed.hackclub.app` (or whatever custom
+domain you attached in the Nest panel). If the page loads locally on 8080 but
+not through the domain, double-check that a domain is configured in the Nest
+panel and that it's pointed at `systemic-speed.hackclub.app`.
 
 ## Docker
 
@@ -137,7 +140,7 @@ One image, three services:
 cd deploy && docker compose up --build
 ```
 
-That starts `web` (page on port 8080), `slack`, and `discord`. The `de421.bsp`
+That starts `web` (page on port 80), `slack`, and `discord`. The `de421.bsp`
 astronomy file is baked into the image; your `.env` is not — compose passes it
 in at runtime.
 
@@ -151,7 +154,7 @@ Run just one: `cd deploy && docker compose up --build web`.
 | `DISCORD_BOT_TOK` | Discord bot token. |
 | `API_KEY` | thespacedevs key (falls back to `DEMO_KEY`). |
 | `GROQ_API_KEY` | optional; powers event enrichment and the web chat box. |
-| `PORT` | port the web server binds (default 8080). |
+| `PORT` | port the web server binds (default 8080; Nest uses 80). |
 
 ## How the code is laid out
 

@@ -1,3 +1,0 @@
-spacer.systemic-speed.hackclub.app {
-    reverse_proxy web:8080
-}
