@@ -79,20 +79,31 @@ def create_app(engine: SpaceEngine | None = None):
         except ValueError:
             return None
 
-    def refresh() -> None:
+    async def refresh() -> None:
         status.set_text("Fetching space data...")
-        events = engine.get_events(
-            track=track.value,
-            after=_parse(after.value),
-            before=_parse(before.value),
-            name=name.value or None,
-            limit=int(limit.value or 20),
-        )
+        try:
+            # Run the (potentially slow, network + Skyfield) fetch off the UI
+            # loop so the page binds and renders immediately instead of blocking
+            # until every event is gathered.
+            events = await asyncio.to_thread(
+                engine.get_events,
+                track=track.value,
+                after=_parse(after.value),
+                before=_parse(before.value),
+                name=name.value or None,
+                limit=int(limit.value or 20),
+            )
+        except Exception as exc:  # a fetch failure must never kill the page
+            status.set_text(f"Could not load events: {exc}")
+            return
         build_event_cards(results, events)
         status.set_text(f"Showing {len(events)} event(s).")
 
     ui.button("Refresh", on_click=refresh).classes("mt-2")
-    refresh()
+    # Defer the first fetch so the server binds its port before the heavy
+    # astronomy/Skyfield search runs (Nest's health check would otherwise
+    # time out and report "no website").
+    ui.timer(0.05, refresh, once=True)
 
     # --- Groq chat ---
     from core.groq_chat import groq_chat
@@ -128,10 +139,26 @@ def _start_bots() -> None:
     """
     if os.environ.get("SLACK_BOT_TOK") and os.environ.get("SLACK_APP_TOK"):
         from core.slack_bot import SlackBot
-        threading.Thread(target=lambda: SlackBot().run(), daemon=True).start()
+
+        def _run_slack():
+            try:
+                SlackBot().run()
+            except Exception:
+                import traceback
+                traceback.print_exc()
+
+        threading.Thread(target=_run_slack, daemon=True).start()
     if os.environ.get("DISCORD_BOT_TOK"):
         from core.discord_bot import DiscordBot
-        threading.Thread(target=lambda: DiscordBot().run(), daemon=True).start()
+
+        def _run_discord():
+            try:
+                DiscordBot().run()
+            except Exception:
+                import traceback
+                traceback.print_exc()
+
+        threading.Thread(target=_run_discord, daemon=True).start()
 
 
 def serve() -> None:

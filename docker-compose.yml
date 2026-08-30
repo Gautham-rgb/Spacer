@@ -1,16 +1,34 @@
 # Three containers, one image, each runs a single mode.
 # Tokens come from the host `.env` (injected at runtime, never baked in).
+#
+# `web` binds 8080; `caddy` reverse-proxies it to the public internet (and
+# handles NiceGUI's websocket for the live UI). Bring up just the site with
+#   docker compose up -d web caddy
+# Or run all three (web + Slack + Discord) behind the proxy.
 
 services:
   web:
     build: .
     command: spacer-web
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     environment:
       - PORT=8080
     env_file:
       - .env
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
 
   slack:
@@ -26,3 +44,7 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

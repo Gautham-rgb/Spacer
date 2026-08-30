@@ -14,7 +14,7 @@ learned that lesson the hard way.
 
 I kept missing rocket launches. Not the big famous ones — those are everywhere —
 but the weird little ones, and the solar storms that make the radio go funny,
-and the alignment windows where a probe could actually get somewhere cool. The
+and the alignment windows where 2planets have a cool oppposition in conjunction. The
 launch sites are a chore to dig through, and the space-weather feeds are
 written for people with degrees I don't have. So I built the thing I wanted:
 one place that just tells me what's coming up, in plain language, that I can
@@ -59,7 +59,7 @@ For just the desktop window: `spacer-gui`. For just the web page: `spacer-web`.
 
 ## Talking to it in Slack and Discord
 
-Both bots listen for `!space` commands in any channel they can see:
+Both bots listen in any channel they can see:
 
 - `!space list [track]` — events. Track is `all`, `space_weather`,
   `space_events`, `probe_launch`, or `probe_events`.
@@ -67,8 +67,6 @@ Both bots listen for `!space` commands in any channel they can see:
 - `!space launches` — just launches.
 - `!space version` — which build is running.
 - `!space help` — the above, in chat.
-- `!groq <question>` — ask the Groq AI assistant anything (aliases `!ask`,
-  `!ai`). Works in any channel, not just `!space`.
 
 Start them with:
 
@@ -80,11 +78,20 @@ spacer --discord
 They read tokens from `.env`. Slack wants `SLACK_BOT_TOK` and
 `SLACK_APP_TOK`; Discord wants `DISCORD_BOT_TOK`. (`.env` is gitignored — set
 them locally or as environment variables on your server.) The web page also has
-an "Ask Groq" box at the bottom, so you don't even need a bot to try it.
+an optional "Ask Groq" box at the bottom.
+
+**Groq makes events verbose.** There is no `!groq` command — instead, Groq is
+used behind the scenes to enrich event descriptions (e.g. launch missions that
+lack a summary get a concise AI-written blurb pulled from Wikipedia + Groq), so
+the `!space` / `/space` listings and the web cards come back with richer detail
+automatically. Set `GROQ_API_KEY` to enable it; without a key, events fall back
+to their plain descriptions.
 
 Slack setup: turn on Socket Mode, give the bot `chat:write` and the
 `*-history` scopes, subscribe to `message.*` events. Discord setup: make a bot,
-flip on the Message Content intent, invite it with Send Messages.
+invite it with Send Messages. On Discord, the `!space` prefix command requires
+the **Message Content** privileged intent in the Discord Developer Portal —
+flip it on, or use the `/space` slash command instead.
 
 ## Running it on a server (Nest, etc.)
 
@@ -97,6 +104,19 @@ On Nest: connect the repo, set the tokens as secrets, and it'll serve the page
 and start whichever bots have tokens. You can also just clone it,
 `pip install -e .`, export the tokens, and run `python app.py` inside a `tmux`
 session so it survives you logging off.
+
+Binding to `0.0.0.0:$PORT` is necessary but not enough to make the site public
+— Nest is a plain Linux VPS, so you also need a reverse proxy. The included
+`Caddyfile` proxies the app (which listens on `localhost:8080`) and passes
+through NiceGUI's websocket for the live UI:
+
+```bash
+docker compose up -d web      # maps 8080 on the host
+caddy run --config Caddyfile  # or: put Caddy in front of the container
+```
+
+Without the proxy (or a port forward), the page only listens inside the
+container and won't be reachable from the internet.
 
 ## Docker
 

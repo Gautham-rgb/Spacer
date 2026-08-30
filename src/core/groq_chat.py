@@ -38,19 +38,22 @@ def groq_available() -> bool:
     return _get_client() is not None
 
 
-def groq_chat(prompt: str, *, max_tokens: int = 400) -> str:
+def groq_chat(prompt: str, *, max_tokens: int = 400, system: str | None = None) -> str:
     if not prompt or not prompt.strip():
-        return "Ask me something — e.g. `!groq what is a coronal mass ejection?`"
+        return "Ask me something — e.g. `what's the next launch?`"
     client = _get_client()
     if client is None:
         return "Groq isn't configured on this server (set GROQ_API_KEY)."
     try:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        elif _SYSTEM:
+            messages.append({"role": "system", "content": _SYSTEM})
+        messages.append({"role": "user", "content": prompt})
         resp = client.chat.completions.create(
             model=GROQ_CHAT_MODEL,
-            messages=[
-                {"role": "system", "content": _SYSTEM},
-                {"role": "user", "content": prompt},
-            ],
+            messages=messages,
             max_tokens=max_tokens,
             temperature=0.7,
         )

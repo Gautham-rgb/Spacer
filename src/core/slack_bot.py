@@ -70,14 +70,6 @@ class SlackBot:
                         cmd = re.sub(r"^!space\s*", "", text, flags=re.I).strip()
                         result = dispatch(self.engine, cmd)
                         self._reply(channel, result.slack_blocks)
-                    elif low.startswith(("!groq", "!ask", "!ai")):
-                        prompt = re.sub(r"^!(groq|ask|ai)\s*", "", text, flags=re.I).strip()
-                        from core.groq_chat import groq_chat
-                        answer = groq_chat(prompt) if prompt else "Usage: !groq <question>"
-                        self._reply(channel, [{
-                            "type": "section",
-                            "text": {"type": "mrkdwn", "text": answer[:2900]},
-                        }])
         finally:
             client.send_socket_mode_response(
                 SocketModeResponse(envelope_id=req.envelope_id)

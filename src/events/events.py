@@ -103,7 +103,9 @@ class ProbeEvent(BaseEvent):
                 "time": normalize_datetime(item.get("window_start", "")),
                 "category": self.name,
                 "title": name,
-                "info": desc_text[:100] + "..."
+                # Keep Groq's verbose enrichment intact (Discord embeds cap at
+                # 4096 chars, so trim only if truly huge).
+                "info": desc_text[:1500]
             })
         return events
 
