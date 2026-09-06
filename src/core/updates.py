@@ -50,11 +50,18 @@ def is_update_available(current: str, latest: str | None) -> bool:
         return False
 
 
-def check_for_update(timeout: float = 5.0) -> str:
-    """Return a human-readable update status line (never raises)."""
+def check_for_update(timeout: float = 5.0, *, notify_error: bool = True) -> str:
+    """Return a human-readable update status line (never raises).
+
+    ``notify_error=False`` turns network failures into an empty string so
+    callers that render this next to a UI (e.g. the web header) can stay clean
+    instead of showing "Could not reach PyPI".
+    """
     try:
         latest = get_latest_version(timeout=timeout)
     except Exception as exc:  # network/JSON errors must never break the caller
+        if not notify_error:
+            return ""
         return f"Could not reach PyPI to check for updates ({exc})."
     if is_update_available(__version__, latest):
         return (

@@ -1,7 +1,17 @@
 [project]
 name = "spacer-bot"
+version = "0.3.0"
 description = "A spacer bot: space-weather, astronomy, and launch events for CLI, Slack, Discord, desktop, and web."
-dynamic = ["version"]
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.11"
+authors = [{name = "Spacer contributors"}]
+keywords = ["space", "astronomy", "weather", "nasa", "noaa", "discord", "slack"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Utilities",
+]
 dependencies = [
     "requests",
     "urllib3",
@@ -17,6 +27,15 @@ dependencies = [
     "python-dotenv",
 ]
 
+[project.urls]
+Homepage = "https://github.com/anomalyco/spacer_bot"
+
+[project.scripts]
+spacer = "CLI_bot.CLI:main"
+spacer-gui = "gui.app:main"
+spacer-web = "web.app:main"
+spacer-serve = "web.app:serve"
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -26,14 +45,39 @@ package-dir = {"" = "src"}
 include-package-data = true
 py-modules = ["engine", "version"]
 
-[tool.setuptools.dynamic]
-version = {attr = "version.__version__"}
-
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[project.scripts]
-spacer = "CLI_bot.CLI:main"
-spacer-gui = "gui.app:main"
-spacer-web = "web.app:main"
-spacer-serve = "web.app:serve"
+[tool.spacer.formats]
+cli_title = "LIVE PRODUCTION EVENT GRAPH"
+cli_header = "[{when}] ({countdown})"
+cli_line = " |-- [{category}] {title}"
+cli_info = "      {info}"
+md_line = "• **[{category}]** {title}\n  `{when}` ({countdown})\n  _{info}"
+
+[tool.spacer.web]
+site_name = "Spacer"
+bg_color = "#070b16"
+panel_color = "#0e1526"
+border_color = "#1d2839"
+accent = "#5898d4"
+
+[tool.spacer.tracks.space_weather]
+label = "Space Weather"
+icon = "storm"
+desc = "Solar storms and K-index forecasts from NOAA."
+
+[tool.spacer.tracks.space_events]
+label = "Planetary Alignments"
+icon = "auto_awesome"
+desc = "Conjunctions and 180° alignments of the planets."
+
+[tool.spacer.tracks.probe_launch]
+label = "Rocket Launches"
+icon = "rocket_launch"
+desc = "Upcoming launches from around the world."
+
+[tool.spacer.tracks.probe_events]
+label = "Probe Missions"
+icon = "satellite_alt"
+desc = "Missions and probes on their way through space."

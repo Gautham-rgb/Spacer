@@ -23,29 +23,22 @@ import time
 from datetime import datetime, timezone
 from nicegui import ui
 from core.config import TRACK_NAMES
+from core.pyproject import spacer_section
 from core.updates import check_for_update
 from engine import SpaceEngine
 from version import __version__
 
-SITE_NAME = "Spacer"
+# Site identity + dark-space palette, from [tool.spacer.web] in pyproject.toml.
+_WEB = spacer_section("web")
+SITE_NAME = _WEB["site_name"]
+BG_COLOR = _WEB["bg_color"]
+PANEL_COLOR = _WEB["panel_color"]
+BORDER_COLOR = _WEB["border_color"]
+ACCENT = _WEB["accent"]
 
-# Dark-space palette.
-BG_COLOR = "#070b16"
-PANEL_COLOR = "#0e1526"
-BORDER_COLOR = "#1d2839"
-ACCENT = "#5898d4"
-
-# Home-page track cards, keyed by the canonical track names from config.
-_TRACK_META = {
-    "space_weather": {"label": "Space Weather", "icon": "storm",
-                      "desc": "Solar storms and K-index forecasts from NOAA."},
-    "space_events": {"label": "Planetary Alignments", "icon": "auto_awesome",
-                     "desc": "Conjunctions and 180° alignments of the planets."},
-    "probe_launch": {"label": "Rocket Launches", "icon": "rocket_launch",
-                     "desc": "Upcoming launches from around the world."},
-    "probe_events": {"label": "Probe Missions", "icon": "satellite_alt",
-                     "desc": "Missions and probes on their way through space."},
-}
+# Home-page track cards, keyed by the canonical track names from config,
+# with labels/icons/blurbs from [tool.spacer.tracks].
+_TRACK_META = spacer_section("tracks")
 TRACK_CARDS = [
     {"track": name, **_TRACK_META.get(name, {"label": name, "icon": "star", "desc": ""})}
     for name in TRACK_NAMES
@@ -66,12 +59,19 @@ DEFAULT_CAT = ("#1f2738", "#7f8ea3")
 
 _ENGINE: SpaceEngine | None = None
 
+# Events with no timestamp sort last.
+_SORT_FALLBACK = datetime.min.replace(tzinfo=timezone.utc)
+
 
 def _get_engine() -> SpaceEngine:
     global _ENGINE
     if _ENGINE is None:
         _ENGINE = SpaceEngine()
     return _ENGINE
+
+
+def _sort_events(events: list[dict]) -> list[dict]:
+    return sorted(events, key=lambda e: e.get("time") or _SORT_FALLBACK)
 
 
 # PyPI update check is a blocking urllib call with a 5s timeout on a cold
@@ -86,7 +86,7 @@ def _update_status() -> str:
     global _UPDATE_MSG, _UPDATE_TS
     now = time.time()
     if _UPDATE_MSG is None or now - _UPDATE_TS > _UPDATE_TTL:
-        _UPDATE_MSG = check_for_update()
+        _UPDATE_MSG = check_for_update(notify_error=False)
         _UPDATE_TS = now
     return _UPDATE_MSG
 
@@ -97,7 +97,7 @@ def _cat_style(category: str | None) -> tuple[str, str]:
 
 def _track_events(track: str, limit: int = 300) -> list[dict]:
     events = _get_engine().get_events(track=track, limit=limit)
-    return sorted(events, key=lambda e: e.get("time") or datetime.min.replace(tzinfo=timezone.utc))
+    return _sort_events(events)
 
 
 def _event_id(ev: dict) -> str:
@@ -146,8 +146,8 @@ def _footer() -> None:
 def build_event_cards(container, events: list[dict], detail_fn=None) -> None:
     """Render a responsive grid of event cards.
 
-    ``detail_fn(ev, index)`` is called when a card is clicked; when None the
-    cards are not clickable.
+    ``detail_fn(ev)`` is called when a card is clicked; when None the cards are
+    just static blocks.
     """
     container.clear()
     container.style(
@@ -167,7 +167,7 @@ def build_event_cards(container, events: list[dict], detail_fn=None) -> None:
         return
 
     with container:
-        for idx, ev in enumerate(events):
+        for ev in events:
             ev_time = ev.get("time")
             ts = ev_time.strftime("%b %d, %Y · %H:%M UTC") if ev_time else "Unknown time"
             countdown = ev.get("countdown") or "T-?"
@@ -194,8 +194,7 @@ def build_event_cards(container, events: list[dict], detail_fn=None) -> None:
                 if detail_fn:
                     with ui.row().classes("w-full items-center justify-end mt-2"):
                         ui.label("Details →").classes("text-xs text-accent")
-                if detail_fn:
-                    card.on_click(lambda _ev=ev, _i=idx: detail_fn(_ev, _i))
+                    card.on("click", lambda _ev=ev: detail_fn(_ev))
 
 
 def create_app(engine: SpaceEngine | None = None):
@@ -231,7 +230,7 @@ def create_app(engine: SpaceEngine | None = None):
                             ui.label(card["desc"]).classes("text-sm text-gray-400")
                     with ui.row().classes("w-full items-center justify-end mt-2"):
                         ui.label("Explore →").classes("text-xs text-accent")
-                    c.on_click(
+                    c.on("click",
                         lambda _t=card["track"]: ui.navigate.to(f"/tracks/{_t}"))
         _footer()
 
@@ -290,11 +289,10 @@ def track_page(track: str) -> None:
         except Exception as exc:
             status.set_text(f"Could not load events: {exc}").classes("text-red-400")
             return
-        planned = sorted(events, key=lambda e: e.get("time") or datetime.min.replace(
-            tzinfo=timezone.utc))
+        planned = _sort_events(events)
         count_label.set_text(f"Events ({len(planned)})")
 
-        def goto(ev: dict, i: int) -> None:
+        def goto(ev: dict) -> None:
             ui.navigate.to(f"/event/{track}/{_event_id(ev)}")
 
         build_event_cards(results, planned, detail_fn=goto)
@@ -304,8 +302,7 @@ def track_page(track: str) -> None:
 
     async def _on_auto(e):
         auto_timer.active = bool(e.value)
-        status.set_text(
-            f"Auto-refresh {'on (every %ss)' % interval.value if e.value else 'off'}")
+        status.set_text(f"Auto-refresh {'on' if e.value else 'off'}")
         if e.value:
             await refresh()
 

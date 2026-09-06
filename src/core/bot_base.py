@@ -53,7 +53,7 @@ def _event_embeds(events: list[dict]) -> list[dict]:
         countdown = ev.get("countdown") or calculate_countdown(ev_time)
         embeds.append({
             "title": ev.get("title", "Untitled"),
-            "description": ev.get("info", "No details"),
+            "description": ev.get("info") or "No details",
             "color": 0x2B6CB0,
             "fields": [
                 {"name": "Category", "value": str(ev.get("category", "EVENT")).upper(),
@@ -122,7 +122,7 @@ def _slack_blocks(events: list[dict]) -> list[dict]:
                 "type": "mrkdwn",
                 "text": (f"*{ev.get('title', 'Untitled')}*  "
                          f"`[{str(ev.get('category', 'EVENT')).upper()}]`\n"
-                         f"{ev.get('info', 'No details')}\n"
+                         f"{ev.get('info') or 'No details'}\n"
                          f"`{ts}`  ({countdown})"),
             },
         })

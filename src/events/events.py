@@ -76,9 +76,33 @@ class SpaceWeatherEvent(BaseEvent):
         return events
     
 class ProbeEvent(BaseEvent):
+    # Memoize enriched mission descriptions per mission name so repeated
+    # fetches (web/bots refreshing every few minutes) don't hammer Wikipedia
+    # and Groq for the same launches on every call.
+    _desc_cache: dict[str, str] = {}
+
     def __init__(self):
         super().__init__(name="Probe")
         self.enricher = EventEnricher()
+
+    def _enrich(self, name: str, desc_text: str) -> str:
+        if len(desc_text) >= 20:
+            return desc_text
+        cached = self._desc_cache.get(name)
+        if cached is not None:
+            return cached
+
+        wiki_info = self.enricher.get_wiki_summary(name)
+        if wiki_info and not wiki_info.startswith("Error"):
+            ai_summary = self.enricher.get_ai_summary(
+                f"Summarize this mission in a few concise sentences: {wiki_info}"
+            )
+            desc_text = ai_summary if ai_summary else wiki_info
+        else:
+            desc_text = wiki_info or desc_text
+        if desc_text and not desc_text.startswith("Error"):
+            self._desc_cache[name] = desc_text
+        return desc_text
 
     def fetch_timeline_data(self, limit: int = 100) -> List[Dict[str, Any]]:
         url = f"{NASA_BASE_URL}/launch/"
@@ -90,14 +114,7 @@ class ProbeEvent(BaseEvent):
         for item in data["results"]:
             name = item.get("name", "Unknown Mission")
             mission = item.get("mission") or {}
-            desc_text = mission.get("description")
-            
-            if not desc_text or len(desc_text) < 20:
-                wiki_info = self.enricher.get_wiki_summary(name)
-                ai_summary = self.enricher.get_ai_summary(
-                    f"Summarize this mission in a few concise sentences: {wiki_info}"
-                )
-                desc_text = ai_summary if ai_summary else wiki_info
+            desc_text = self._enrich(name, mission.get("description") or "")
             
             events.append({
                 "time": normalize_datetime(item.get("window_start", "")),

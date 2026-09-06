@@ -112,7 +112,7 @@ spacer_bot/
 ├── de421.bsp         # bundled JPL ephemeris (used by the astronomy tracker)
 ├── .env / .gitignore / .dockerignore / LICENSE / README.md
 ├── src/              # all the Python code (engine, core/, events/, web/, ...)
-├── deploy/           # Dockerfile, docker-compose.yml, requirements.txt
+├── deploy/           # Dockerfile, docker-compose.yml (deps come from pyproject.toml)
 └── docs/             # ROADMAP.md
 ```
 
