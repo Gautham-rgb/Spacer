@@ -22,8 +22,8 @@ import threading
 import time
 from datetime import datetime, timezone
 from nicegui import ui
-from core.config import TRACK_NAMES
-from core.pyproject import spacer_section
+from core.config import CATEGORY_STYLE, DEFAULT_CATEGORY_STYLE
+from core.pyproject import spacer_section, track_cards
 from core.updates import check_for_update
 from engine import SpaceEngine
 from version import __version__
@@ -36,26 +36,8 @@ PANEL_COLOR = _WEB["panel_color"]
 BORDER_COLOR = _WEB["border_color"]
 ACCENT = _WEB["accent"]
 
-# Home-page track cards, keyed by the canonical track names from config,
-# with labels/icons/blurbs from [tool.spacer.tracks].
-_TRACK_META = spacer_section("tracks")
-TRACK_CARDS = [
-    {"track": name, **_TRACK_META.get(name, {"label": name, "icon": "star", "desc": ""})}
-    for name in TRACK_NAMES
-]
-
-# Category -> (tag color, accent) for consistent theming.
-CATEGORY_STYLE: dict[str, tuple[str, str]] = {
-    "space_weather": ("#0d3b66", "#f4d35e"),
-    "space_events": ("#22577a", "#38a3a5"),
-    "PLANETARY": ("#22577a", "#38a3a5"),
-    "probe_launch": ("#4a1942", "#ee6c4d"),
-    "probe_events": ("#240046", "#c77dff"),
-    "Probe": ("#240046", "#c77dff"),
-    "NOAA_FORECAST": ("#0d3b66", "#57cc99"),
-    "NOAA_PAST": ("#2d3142", "#adb5bd"),
-}
-DEFAULT_CAT = ("#1f2738", "#7f8ea3")
+# Home-page track cards, shared with the desktop GUI (same {track,label,icon,desc}).
+TRACK_CARDS = track_cards()
 
 _ENGINE: SpaceEngine | None = None
 
@@ -92,7 +74,7 @@ def _update_status() -> str:
 
 
 def _cat_style(category: str | None) -> tuple[str, str]:
-    return CATEGORY_STYLE.get(str(category or "").strip(), DEFAULT_CAT)
+    return CATEGORY_STYLE.get(str(category or "").strip(), DEFAULT_CATEGORY_STYLE)
 
 
 def _track_events(track: str, limit: int = 300) -> list[dict]:
@@ -281,8 +263,8 @@ def track_page(track: str) -> None:
             events = await asyncio.to_thread(
                 _get_engine().get_events,
                 track=track,
-                after=_parse(after.value),
-                before=_parse(before.value),
+                after=_parse(after.value), #type: ignore
+                before=_parse(before.value), #type: ignore
                 name=name.value or None,
                 limit=int(limit.value or 60),
             )

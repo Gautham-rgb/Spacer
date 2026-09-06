@@ -9,18 +9,18 @@ that each adapter renders in its own native format (Block Kit vs Embeds).
 from __future__ import annotations
 
 from engine import SpaceEngine
+from core.config import TRACKS
 from version import __version__
 
 HELP_TEXT = (
     "*Spacer* — what you can ask (prefix with `!space`)\n"
-    "• `!space list [track]` — events for a track (all / space_weather / "
-    "space_events / probe_launch / probe_events)\n"
+    "• `!space list [track] [--limit N] [--name text]` — events for a track "
+    "(all / space_weather / space_events / probe_launch / probe_events)\n"
     "• `!space weather` — space-weather only\n"
     "• `!space launches` — upcoming launches\n"
     "• `!space update` — check if a newer release is out\n"
     "• `!space version` — which build this is\n"
-    "• `!space help` — this message\n"
-    "• `!groq <question>` — ask the Groq AI assistant (works in any channel)"
+    "• `!space help` — this message"
 )
 
 _TRACK_ALIASES = {
@@ -65,15 +65,19 @@ def _event_embeds(events: list[dict]) -> list[dict]:
 
 
 def dispatch(engine: SpaceEngine, cmd: str) -> CommandResult:
-    """Route a ``!space`` command string to its :class:`CommandResult`."""
-    parts = cmd.split()
-    sub = (parts[0].lower() if parts else "help")
+    """Route a ``!space`` command string to its :class:`CommandResult`.
 
-    if sub in ("help", ""):
-        return CommandResult(HELP_TEXT,
-                             [{"type": "section",
-                               "text": {"type": "mrkdwn", "text": HELP_TEXT}}],
-                             [{"title": "Spacer", "description": HELP_TEXT, "color": 0x2B6CB0}])
+    Handles the shortcuts (``weather``/``launches``), tracks a ``list`` target
+    wherever it appears, and picks up ``--limit`` / ``--name`` flags so the
+    bots behave like the CLI/web/GUI.
+    """
+    parts = cmd.split()
+    if not parts:
+        return _help_result()
+
+    sub = parts[0].lower()
+    if sub in ("help", "h"):
+        return _help_result()
 
     if sub == "version":
         msg = f"Spacer v{__version__}"
@@ -90,13 +94,47 @@ def dispatch(engine: SpaceEngine, cmd: str) -> CommandResult:
                                "text": {"type": "mrkdwn", "text": msg}}],
                              [{"title": "Spacer update", "description": msg, "color": 0x2B6CB0}])
 
-    track = _TRACK_ALIASES.get(sub, "all")
-    if sub == "list" and len(parts) > 1:
-        track = _TRACK_ALIASES.get(parts[1].lower(), parts[1].lower())
+    known = set(_TRACK_ALIASES) | set(TRACKS)
+    track = _TRACK_ALIASES.get(sub, sub if sub in TRACKS else "all")
+    limit = 20
+    name: str | None = None
 
-    events = engine.get_events(track=track, limit=20)
+    text_tokens: list[str] = []
+    i = 1
+    while i < len(parts):
+        tok = parts[i]
+        if tok in ("-l", "--limit") and i + 1 < len(parts):
+            try:
+                limit = max(1, int(parts[i + 1]))
+            except ValueError:
+                pass
+            i += 2
+            continue
+        if tok in ("-n", "--name") and i + 1 < len(parts):
+            name = parts[i + 1]
+            i += 2
+            continue
+        text_tokens.append(tok)
+        i += 1
+
+    for tok in text_tokens:
+        low = tok.lower()
+        if low in known:
+            track = _TRACK_ALIASES.get(low, low)
+            break
+
+    events = engine.get_events(track=track, name=name, limit=limit)
     plain = f"Spacer timeline ({track})"
+    if name:
+        plain += f" — “{name}”"
     return CommandResult(plain, _slack_blocks(events), _event_embeds(events))
+
+
+def _help_result() -> CommandResult:
+    return CommandResult(HELP_TEXT,
+                         [{"type": "section",
+                           "text": {"type": "mrkdwn", "text": HELP_TEXT}}],
+                         [{"title": "Spacer", "description": HELP_TEXT, "color": 0x2B6CB0}])
 
 
 def _slack_blocks(events: list[dict]) -> list[dict]:

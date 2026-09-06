@@ -91,3 +91,16 @@ class EventCache:
                 os.remove(self.file)
             except OSError:
                 pass
+
+    def stats(self) -> dict:
+        """Summary of what is cached: path + per-key entry counts and age."""
+        data = self._read()
+        now = time.time()
+        return {
+            "file": self.file,
+            "entries": {
+                key: {"events": len(entry.get("events", [])),
+                      "age_s": int(now - entry.get("ts", 0))}
+                for key, entry in data.items()
+            },
+        }

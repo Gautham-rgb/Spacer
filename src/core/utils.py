@@ -14,8 +14,14 @@ def normalize_datetime(date_string: str) -> datetime:
                     nano_part, tz_offset = nano_part.split("+", 1)
                     tz_offset = "+" + tz_offset
                 clean_str = f"{base_part}.{nano_part[:6]}{tz_offset}"
-            return datetime.fromisoformat(clean_str)
-        return datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            parsed = datetime.fromisoformat(clean_str)
+        else:
+            parsed = datetime.strptime(clean_str, "%Y-%m-%d %H:%M:%S")
+        # Treat timezone-less strings (e.g. SWPC K-index timestamps) as UTC so
+        # they can be compared against aware ``after``/``before`` filters.
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
     except Exception:
         return datetime.now(timezone.utc)
 

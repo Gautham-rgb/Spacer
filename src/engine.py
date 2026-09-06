@@ -68,8 +68,14 @@ class SpaceEngine:
                 limit: int | None) -> list[dict[str, Any]]:
         targets = self.get_trackers(track)
         pool: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
         for t in targets:
-            pool.extend(t.fetch_timeline_data())
+            for ev in t.fetch_timeline_data():
+                key = (ev.get("title", ""), str(ev.get("time", "")))
+                if key in seen:
+                    continue
+                seen.add(key)
+                pool.append(ev)
         if name:
             filtered = [e for e in pool if name.lower() in e.get('title', '').lower()]
             pool = filtered

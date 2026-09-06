@@ -36,43 +36,47 @@ class SpaceWeatherEvent(BaseEvent):
     def fetch_timeline_data(self) -> List[Dict[str, Any]]:
         events = []
 
-        # Past Weather
-        past_url = f"{NOAA_WEATHER_URL}/products/noaa-space-weather-scale.json"
-        past_data, _ = self.api_client.get(past_url)
-        # NOAA returns either a list or an object that nests the list under a key.
-        if isinstance(past_data, list):
-            past_items = past_data
-        elif isinstance(past_data, dict):
-            past_items = past_data.get("reports") or past_data.get("errors") or []
-        else:
-            past_items = []
-        for item in past_items[:5]:
-            if isinstance(item, dict):
+        # Planetary K-index: observed + 3-day forecast. Raises geomagnetic
+        # storm alerts (KP >= 5) as discrete events; quieter periods are shown
+        # as plain forecast readings.
+        kp_url = f"{NOAA_WEATHER_URL}/products/noaa-planetary-k-index-forecast.json"
+        kp_data, _ = self.api_client.get(kp_url)
+        if isinstance(kp_data, list):
+            for item in kp_data:
+                if not isinstance(item, dict):
+                    continue
+                kp = item.get("kp")
+                state = item.get("observed") or "predicted"
+                storm = isinstance(kp, (int, float)) and kp >= 5.0
                 events.append({
                     "time": normalize_datetime(item.get("time_tag", "")),
-                    "category": "NOAA_PAST",
-                    "title": f"Activity: {item.get('scale_id')}",
-                    "info": f"Level: {item.get('level')} | {item.get('name')}"
+                    "category": "GEOMAGNETIC_STORM" if storm else "K_INDEX",
+                    "title": (f"Geomagnetic Storm: KP {kp}" if storm
+                              else f"K-Index {kp} ({state})"),
+                    "info": f"Planetary K-index (kp={kp}, {state}) "
+                            f"from NOAA SWPC at {item.get('time_tag')}",
                 })
 
-        # Forecast Weather
-        forecast_url = f"{NOAA_WEATHER_URL}/json/forecasts/3-day-forecast.json"
-        forecast_data, _ = self.api_client.get(forecast_url)
-        if isinstance(forecast_data, dict):
-            forecast_items = forecast_data.get("forecasts") or forecast_data.get("forecast") or [forecast_data]
-        elif isinstance(forecast_data, list):
-            forecast_items = forecast_data
-        else:
-            forecast_items = []
-        for item in forecast_items:
-            if isinstance(item, dict):
+        # Latest solar X-ray flare from GOES (a discrete event with start/peak).
+        flare_url = f"{NOAA_WEATHER_URL}/json/goes/primary/xray-flares-latest.json"
+        flare_data, _ = self.api_client.get(flare_url)
+        if isinstance(flare_data, list):
+            for item in flare_data:
+                if not isinstance(item, dict):
+                    continue
+                flare_class = item.get("max_class") or item.get("current_class") or "?"
                 events.append({
-                    "time": normalize_datetime(item.get("time_tag", "")),
-                    "category": "NOAA_FORECAST",
-                    "title": f"Forecast K-Index: {item.get('kp_index')}",
-                    "info": f"Observed/Predicted at {item.get('time_tag')}"
+                    "time": normalize_datetime(item.get("max_time", "")
+                                               or item.get("begin_time", "")),
+                    "category": "SOLAR_FLARE",
+                    "title": f"Solar Flare {flare_class} on GOES-{item.get('satellite')}",
+                    "info": f"Peak flux at {item.get('max_time')} "
+                            f"(class {flare_class}; begin {item.get('begin_time')})",
                 })
 
+        # Skip the dead /products/noaa-space-weather-scale.json and
+        # /json/forecasts/3-day-forecast.json endpoints (both 404 as of 2026-09).
+        # The monthly solar-cycle JSON is too sparse to make useful events.
         return events
     
 class ProbeEvent(BaseEvent):

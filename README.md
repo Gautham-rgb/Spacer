@@ -26,7 +26,7 @@ tab. More on that below.)
 
 ## Installation
 
-Needs Python 3.10+ and pip.
+Needs Python 3.11+ and pip.
 
 ```bash
 pip install -e .
@@ -34,26 +34,34 @@ pip install -e .
 
 That drops four commands on your machine:
 
-- `spacer` — the terminal CLI
+- `spacer` — the terminal CLI (events + management subcommands)
 - `spacer-gui` — the desktop window
 - `spacer-web` — just the web page
 - `spacer-serve` — web page + both bots in one process (good for a server)
-
-(Some day I might put it on PyPI. Today is not that day. The `-e` install is fine.)
 
 ## Quickstart
 
 From the terminal:
 
 ```bash
-spacer                                       # everything, listed
-spacer probe_launch list --limit 10
-spacer all list --after 2026-01-01 --before 2026-12-31 --name mars
-spacer space_weather notify                  # ping me about weather soon
+spacer events list                              # last day -> next two weeks, all tracks
+spacer events list probe_launch --limit 10
+spacer events list all --after 2026-01-01 --before 2026-12-31 --name mars --format json
+spacer events show probe_launch 3               # full details for event #3
+spacer notify space_weather                     # ping you about weather in the next hour
 ```
 
-Flags: `--after` / `--before` (YYYY-MM-DD), `--name`, `--limit`, `--webhook`.
-Also `--version`, `--check-update`, `--slack`, `--discord`.
+The CLI is split into command groups:
+
+- `spacer events list|show` — timelines and single-event details (flags:
+  `--after` / `--before` in `YYYY-MM-DD`, `--name`, `-l/--limit`,
+  `-F/--format cli|md|json`)
+- `spacer tracks` — the configured tracks
+- `spacer config` — effective settings (and which tokens are set)
+- `spacer health` — checks every upstream API, one line at a time
+- `spacer notify [track]` — desktop notification for events in the next hour
+- `spacer cache clear|stats` — inspect or delete the fetch cache
+- `spacer update` / `spacer -V` — release check / version
 
 For just the desktop window: `spacer-gui`. For just the web page: `spacer-web`.
 
@@ -61,10 +69,11 @@ For just the desktop window: `spacer-gui`. For just the web page: `spacer-web`.
 
 Both bots listen in any channel they can see:
 
-- `!space list [track]` — events. Track is `all`, `space_weather`,
-  `space_events`, `probe_launch`, or `probe_events`.
+- `!space list [track] [--limit N] [--name text]` — events. Track is `all`,
+  `space_weather`, `space_events`, `probe_launch`, or `probe_events`.
 - `!space weather` — just space weather.
 - `!space launches` — just launches.
+- `!space update` — check for a newer release.
 - `!space version` — which build is running.
 - `!space help` — the above, in chat.
 
@@ -77,8 +86,7 @@ spacer --discord
 
 They read tokens from `.env`. Slack wants `SLACK_BOT_TOK` and
 `SLACK_APP_TOK`; Discord wants `DISCORD_BOT_TOK`. (`.env` is gitignored — set
-them locally or as environment variables on your server.) The web page also has
-an optional "Ask Groq" box at the bottom.
+them locally or as environment variables on your server.)
 
 **Groq makes events verbose.** There is no `!groq` command — instead, Groq is
 used behind the scenes to enrich event descriptions (e.g. launch missions that

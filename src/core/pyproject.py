@@ -83,3 +83,18 @@ def spacer_section(name: str) -> dict:
     user = spacer_sections().get(name, {})
     base.update(user)
     return base
+
+
+def track_cards() -> list[dict]:
+    """Home-page cards for the real trackers, shared by web and desktop GUI.
+
+    Each entry is ``{"track", "label", "icon", "desc"}`` keyed by the canonical
+    ``TRACK_NAMES`` from :mod:`core.config`, filled from ``[tool.spacer.tracks]``.
+    """
+    from core.config import TRACK_NAMES
+
+    meta = spacer_section("tracks")
+    return [
+        {"track": name, **meta.get(name, {"label": name, "icon": "star", "desc": ""})}
+        for name in TRACK_NAMES
+    ]

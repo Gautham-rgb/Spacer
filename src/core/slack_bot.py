@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 
 from core.bot_base import dispatch
 from core.env import load_env
@@ -59,21 +60,38 @@ class SlackBot:
     def _on_request(self, client, req) -> None:
         from slack_sdk.socket_mode.response import SocketModeResponse
 
+        # Acknowledge the envelope FIRST: the fetch + Groq enrichment below can
+        # take seconds, and Socket Mode expects the ack well before then — an
+        # unacked event is retried and the reply appears to never come.
         try:
-            if req.type == "events_api":
-                event = req.payload.get("event", {})
-                if event.get("type") == "message" and "subtype" not in event:
-                    text = event.get("text", "")
-                    low = text.lower()
-                    channel = event.get("channel", "")
-                    if low.startswith("!space"):
-                        cmd = re.sub(r"^!space\s*", "", text, flags=re.I).strip()
-                        result = dispatch(self.engine, cmd)
-                        self._reply(channel, result.slack_blocks)
-        finally:
             client.send_socket_mode_response(
                 SocketModeResponse(envelope_id=req.envelope_id)
             )
+        except Exception:  # noqa: BLE001 - never let ack problems break the loop
+            pass
+
+        try:
+            if req.type != "events_api":
+                return
+            event = req.payload.get("event", {})
+            if event.get("type") == "message" and "subtype" not in event:
+                text = event.get("text", "") or ""
+                if text.lower().startswith("!space"):
+                    threading.Thread(
+                        target=self._handle_command, args=(client, event), daemon=True
+                    ).start()
+        except Exception:  # noqa: BLE001 - keep the listener alive
+            pass
+
+    def _handle_command(self, client, event) -> None:
+        try:
+            text = event.get("text", "") or ""
+            cmd = re.sub(r"^!space\s*", "", text, flags=re.I).strip()
+            channel = event.get("channel", "")
+            result = dispatch(self.engine, cmd)
+            self._reply(channel, result.slack_blocks)
+        except Exception as exc:  # noqa: BLE001 - report, never crash the thread
+            print(f"Spacer Slack handler error: {exc}")
 
     def run(self) -> None:
         self._ensure_client()
