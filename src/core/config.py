@@ -1,5 +1,10 @@
 import os
 
+# The one canonical list of data tracks. CLI, desktop GUI, web home cards, and
+# bot help text all derive their choices from here so they can't drift apart.
+TRACKS = ["all", "space_weather", "space_events", "probe_launch", "probe_events"]
+TRACK_NAMES = TRACKS[1:]  # the real trackers, without the "all" wildcard
+
 NASA_API_KEY = os.environ.get("API_KEY", "DEMO_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY") or None
 # Default to a model available on Groq's free tier (llama-3.1-8b-instant and

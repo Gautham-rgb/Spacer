@@ -9,9 +9,6 @@ Hack Club Nest secrets).
 
 from __future__ import annotations
 
-import os
-
-
 def load_env(path: str = ".env") -> None:
     try:
         from dotenv import load_dotenv

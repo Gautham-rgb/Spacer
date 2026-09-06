@@ -19,9 +19,8 @@ import ttkbootstrap as ttk
 from ttkbootstrap.scrolled import ScrolledText
 
 from engine import SpaceEngine
+from core.config import TRACKS
 from version import __version__
-
-TRACKS = ["all", "space_weather", "space_events", "probe_launch", "probe_events"]
 
 
 class SpacerGUI:

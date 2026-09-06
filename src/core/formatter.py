@@ -1,5 +1,13 @@
 from rich.console import Console
 from core.utils import calculate_countdown
+from datetime import datetime, timezone
+
+_FALLBACK = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _sort_key(ev: dict):
+    return ev.get('time') or _FALLBACK
+
 
 class TimelineFormatter:
     def __init__(self):
@@ -10,7 +18,7 @@ class TimelineFormatter:
             print("No events found for this timeframe.")
             return
 
-        events.sort(key=lambda x: x.get('time'))
+        events.sort(key=_sort_key)
         print(f"\n^ LIVE PRODUCTION EVENT GRAPH")
         print("=" * 70)
         for ev in events:
@@ -26,7 +34,7 @@ class TimelineFormatter:
         if not events:
             return "No events found for this timeframe."
 
-        events.sort(key=lambda x: x.get('time'))
+        events.sort(key=_sort_key)
 
         lines = []
         for ev in events:

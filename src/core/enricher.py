@@ -1,13 +1,10 @@
 from groq import Groq
 import wikipedia
-from typing import Optional
 from core.config import GROQ_API_KEY, GROQ_MODEL
 
 
 class EventEnricher:
     def __init__(self):
-        # If no key is configured, skip enrichment instead of building a
-        # client that will fail on every request.
         self.client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
         wikipedia.set_lang("en")
 

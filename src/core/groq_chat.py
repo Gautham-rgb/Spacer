@@ -13,8 +13,9 @@ from core.config import GROQ_API_KEY, GROQ_MODEL
 
 GROQ_CHAT_MODEL = GROQ_MODEL
 _SYSTEM = (
-    "You are Spacer's assistant: friendly, concise, and focused on space, "
-    "astronomy, and science when relevant."
+    "You are a space enthusiast's assistant: friendly, concise, and focused on space, "
+    "astronomy, and science when relevant. "
+    "Don't use Markdown; use plain text and numbered lists if helpful."
 )
 
 _client = None
@@ -58,5 +59,5 @@ def groq_chat(prompt: str, *, max_tokens: int = 400, system: str | None = None) 
             temperature=0.7,
         )
         return str(resp.choices[0].message.content).strip()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return f"Groq error: {exc}"

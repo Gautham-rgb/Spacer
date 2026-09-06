@@ -70,12 +70,15 @@ class SpaceEngine:
         pool: list[dict[str, Any]] = []
         for t in targets:
             pool.extend(t.fetch_timeline_data())
-        filtered = pool
         if name:
-            filtered = [e for e in filtered if name.lower() in e.get('title', '').lower()]
+            filtered = [e for e in pool if name.lower() in e.get('title', '').lower()]
+            pool = filtered
+        # Sort by time (events without a timestamp go last) so ``limit`` keeps
+        # the most relevant events instead of whatever order upstream returned.
+        pool.sort(key=lambda e: e.get('time') or datetime.max.replace(tzinfo=timezone.utc))
         if limit:
-            filtered = filtered[:limit]
-        return filtered
+            pool = pool[:limit]
+        return pool
 
     def run(self, track: str, action: str, after: datetime | None = None,
             before: datetime | None = None, name: str | None = None,

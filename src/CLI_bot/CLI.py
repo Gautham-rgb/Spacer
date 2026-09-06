@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from engine import SpaceEngine
+from core.config import TRACKS
 from version import __version__
 
 
@@ -22,7 +23,7 @@ def parse_cli_date(date_str: str) -> datetime:
 def build_parser():
     parser = argparse.ArgumentParser(description="Spacer CLI Router")
     parser.add_argument("track", nargs="?", default="all",
-                        choices=["all", "space_weather", "space_events", "probe_launch", "probe_events"],
+                        choices=TRACKS,
                         help="Event category to track (default: all)")
     parser.add_argument("action", nargs="?", default="list",
                         choices=["list", "notify"], help="Action to perform (default: list)")
