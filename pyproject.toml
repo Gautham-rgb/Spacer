@@ -27,6 +27,16 @@ dependencies = [
     "python-dotenv",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest >= 8", "pytest-cov"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: hit real upstream APIs (NOAA, thespacedevs) and the real engine",
+    "gui: open a (withdrawn) desktop GUI window to exercise layout + navigation",
+]
+
 [project.urls]
 Homepage = "https://github.com/anomalyco/spacer_bot"
 

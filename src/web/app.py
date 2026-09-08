@@ -308,18 +308,23 @@ def track_page(track: str) -> None:
 
 
 def _groq_card() -> None:
-    from core.groq_chat import groq_chat
+    from core.groq_chat import clear_conversation, groq_chat
 
     with ui.card().classes("w-full no-shadow rounded-xl mt-4").style(
             f"background:{PANEL_COLOR}; border:1px solid {BORDER_COLOR};"):
         with ui.row().classes("items-center gap-2"):
             ui.icon("psychology", size="22").classes("text-accent")
             ui.label("Ask Groq").classes("text-lg font-semibold text-gray-100")
-        ui.label("Powered by Groq — ask about anything on this page.").classes(
+        ui.label("Powered by Groq — follow-up questions remember this conversation.").classes(
             "text-xs text-gray-500")
         groq_input = ui.input("Your question").props("outlined dense").classes("w-full")
         groq_out = ui.label("").style("white-space: pre-wrap").classes(
             "text-sm text-gray-300 mt-1")
+        GROQ_KEY = "web-main"
+
+        def _reset() -> None:
+            clear_conversation(GROQ_KEY)
+            groq_out.set_text("Conversation cleared — Groq starts fresh.")
 
         async def _ask_groq() -> None:
             prompt = (groq_input.value or "").strip()
@@ -327,11 +332,15 @@ def _groq_card() -> None:
                 groq_out.set_text("Type a question first.")
                 return
             groq_out.set_text("Thinking…")
-            answer = await asyncio.to_thread(groq_chat, prompt)
+            answer = await asyncio.to_thread(groq_chat, prompt, key=GROQ_KEY)
             groq_out.set_text(answer)
 
-        ui.button("Ask", icon="send", on_click=_ask_groq).props(
-            "dense outline no-caps").classes("text-accent mt-1")
+        groq_input.on("keydown.enter", lambda: asyncio.create_task(_ask_groq()))
+        with ui.row().classes("items-center gap-2 mt-1"):
+            ui.button("Ask", icon="send", on_click=_ask_groq).props(
+                "dense outline no-caps").classes("text-accent")
+            ui.button("Reset", icon="clear", on_click=_reset).props(
+                "dense outline no-caps").classes("text-gray-400")
 
 
 @ui.page("/event/{track}/{eid}")

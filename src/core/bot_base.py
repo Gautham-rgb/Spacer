@@ -18,6 +18,8 @@ HELP_TEXT = (
     "(all / space_weather / space_events / probe_launch / probe_events)\n"
     "• `!space weather` — space-weather only\n"
     "• `!space launches` — upcoming launches\n"
+    "• `!space groq <question>` — chat with the Groq assistant (remembers this "
+    "conversation; `!space groq reset` clears it)\n"
     "• `!space update` — check if a newer release is out\n"
     "• `!space version` — which build this is\n"
     "• `!space help` — this message"
@@ -64,12 +66,14 @@ def _event_embeds(events: list[dict]) -> list[dict]:
     return embeds
 
 
-def dispatch(engine: SpaceEngine, cmd: str) -> CommandResult:
+def dispatch(engine: SpaceEngine, cmd: str,
+             context: dict | None = None) -> CommandResult:
     """Route a ``!space`` command string to its :class:`CommandResult`.
 
     Handles the shortcuts (``weather``/``launches``), tracks a ``list`` target
     wherever it appears, and picks up ``--limit`` / ``--name`` flags so the
-    bots behave like the CLI/web/GUI.
+    bots behave like the CLI/web/GUI. ``context`` (e.g. ``{"channel": ...,
+    "user": ...}``) scopes the ``!space groq`` conversation memory per room.
     """
     parts = cmd.split()
     if not parts:
@@ -85,6 +89,9 @@ def dispatch(engine: SpaceEngine, cmd: str) -> CommandResult:
                              [{"type": "section",
                                "text": {"type": "mrkdwn", "text": msg}}],
                              [{"title": "Spacer", "description": msg, "color": 0x2B6CB0}])
+
+    if sub == "groq":
+        return _groq_result(cmd, context)
 
     if sub == "update":
         from core.updates import check_for_update
@@ -135,6 +142,31 @@ def _help_result() -> CommandResult:
                          [{"type": "section",
                            "text": {"type": "mrkdwn", "text": HELP_TEXT}}],
                          [{"title": "Spacer", "description": HELP_TEXT, "color": 0x2B6CB0}])
+
+
+def _conversation_key(context: dict | None) -> str:
+    if not context:
+        return "shared"
+    return f"{context.get('user') or '?'}@{context.get('channel') or '?'}"
+
+
+def _groq_result(cmd: str, context: dict | None) -> CommandResult:
+    """Handle ``!space groq <question>`` (and ``reset``) with per-room memory."""
+    from core.groq_chat import clear_conversation, groq_chat
+
+    question = cmd[len("groq"):].strip()
+    key = _conversation_key(context)
+    if question.lower() in ("reset", "clear"):
+        clear_conversation(key)
+        msg = "Conversation cleared — Groq starts fresh."
+    elif not question:
+        msg = "Ask me something — `!space groq <your question>`"
+    else:
+        msg = groq_chat(question, key=key)
+    return CommandResult(msg,
+                         [{"type": "section",
+                           "text": {"type": "mrkdwn", "text": msg}}],
+                         [{"title": "Spacer groq", "description": msg, "color": 0x2B6CB0}])
 
 
 def _slack_blocks(events: list[dict]) -> list[dict]:

@@ -67,6 +67,26 @@ class DiscordBot:
             for embed_data in result.discord_embeds:
                 await ctx.send(embed=self._to_embed(embed_data))
 
+        @bot.hybrid_command(name="groq", description="Ask the Groq assistant")
+        async def groq_cmd(ctx: commands.Context, *, question: str = ""):
+            from core.groq_chat import clear_conversation, groq_chat
+
+            question = (question or "").strip()
+            key = f"{ctx.author.id}@{ctx.channel.id}"
+            if question.lower() in ("reset", "clear"):
+                await ctx.send("Conversation cleared — Groq starts fresh.")
+                clear_conversation(key)
+                return
+            if not question:
+                await ctx.send("Ask me something — `/groq <your question>`")
+                return
+            try:
+                await ctx.defer()
+            except Exception:  # noqa: BLE001 - deferral is best-effort
+                pass
+            answer = await asyncio.to_thread(groq_chat, question, key=key)
+            await ctx.send(answer)
+
         return bot
 
     @staticmethod

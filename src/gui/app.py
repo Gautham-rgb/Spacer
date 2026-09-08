@@ -104,7 +104,7 @@ class SpacerGUI:
     def _label(self, parent, text="", *, size=10, bold=False, color="#d5dae3",
                side=None, anchor="w", wraplength=0):
         lbl = tk.Label(parent, text=text, font=(_FONT, size, "bold" if bold else "normal"),
-                       bg=self.palette["panel_color"], fg=color, anchor=anchor,
+                       bg=self.palette["panel_color"], fg=color, anchor=anchor, #type: ignore
                        justify="left", wraplength=wraplength)
         if side:
             lbl.pack(side=side, padx=6, pady=1)

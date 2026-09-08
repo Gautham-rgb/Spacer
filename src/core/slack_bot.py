@@ -88,7 +88,10 @@ class SlackBot:
             text = event.get("text", "") or ""
             cmd = re.sub(r"^!space\s*", "", text, flags=re.I).strip()
             channel = event.get("channel", "")
-            result = dispatch(self.engine, cmd)
+            result = dispatch(
+                self.engine, cmd,
+                context={"channel": channel, "user": event.get("user", "")},
+            )
             self._reply(channel, result.slack_blocks)
         except Exception as exc:  # noqa: BLE001 - report, never crash the thread
             print(f"Spacer Slack handler error: {exc}")
