@@ -98,5 +98,13 @@ class SlackBot:
 
     def run(self) -> None:
         self._ensure_client()
-        print("Spacer Slack bot connected (Socket Mode). Listening for !space commands...")
+        print("Spacer Slack bot connecting (Socket Mode)...")
+        # Socket Mode connects on a background thread and returns, so we have
+        # to keep the process alive ourselves — otherwise main() returns and
+        # docker-compose sees a clean exit and restarts us in a loop.
         self.client.connect()
+        print("Spacer Slack bot connected (Socket Mode). Listening for !space commands...")
+        try:
+            threading.Event().wait()
+        except KeyboardInterrupt:
+            self.client.disconnect()
