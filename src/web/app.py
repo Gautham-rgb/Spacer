@@ -120,7 +120,14 @@ def _header(title: str = SITE_NAME, back_to: str | None = None) -> None:
 
 
 def _footer() -> None:
-    with ui.row().classes("w-full justify-center mt-12 mb-4"):
+    with ui.row().classes("w-full justify-center items-center mt-12 mb-2 gap-5"):
+        ui.link("Say hi on Slack", "https://app.slack.com/client/T0B9WS0J88P/C0BAFUQQCQ4",
+                new_tab=True).classes("text-sm text-accent")
+        ui.label("·").classes("text-gray-700")
+        ui.link("Talk on Discord",
+                "https://discord.com/channels/1541782807574224928/1541782808509284444",
+                new_tab=True).classes("text-sm text-accent")
+    with ui.row().classes("w-full justify-center mb-4"):
         ui.label(f"{SITE_NAME} v{__version__} · made for Hack Club Nest").classes(
             "text-xs text-gray-600")
 
