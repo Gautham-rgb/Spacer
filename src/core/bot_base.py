@@ -41,15 +41,22 @@ class CommandResult:
         self.discord_embeds = discord_embeds
 
 
-def _event_embeds(events: list[dict]) -> list[dict]:
+def _event_embeds(events: list[dict], limit: int = 20,
+                  summary: str | None = None) -> list[dict]:
     from core.utils import calculate_countdown
 
-    if not events:
-        return [{"title": "Upcoming space events",
-                 "description": "_Nothing scheduled in this window._",
-                 "color": 0x888888}]
     embeds: list[dict] = []
-    for ev in sorted(events, key=lambda e: e.get("time") or 0)[:20]:
+    if summary:
+        embeds.append({"title": summary, "color": 0x2B6CB0,
+                       "description": "_Upcoming space events — flags: `--limit` / `--name`._"})
+    if not events:
+        embeds.append({"title": "Nothing scheduled in this window.",
+                       "description": "_Try clearing the filters or widening the date range._",
+                       "color": 0x888888})
+        return embeds
+    cap = min(max(limit, 1), 10)
+    shown = sorted(events, key=lambda e: e.get("time") or 0)[:cap]
+    for ev in shown:
         ev_time = ev.get("time")
         ts = ev_time.strftime("%Y-%m-%d %H:%M UTC") if ev_time else "Unknown"
         countdown = ev.get("countdown") or calculate_countdown(ev_time)
@@ -63,6 +70,11 @@ def _event_embeds(events: list[dict]) -> list[dict]:
                 {"name": "When", "value": f"{ts} ({countdown})", "inline": True},
             ],
         })
+    if len(events) > cap:
+        embeds.append({"title": f"… and {len(events) - cap} more",
+                       "description": "Discord caps at 10 embeds per message — "
+                                      "raise `limit` to see more in the source list.",
+                       "color": 0x888888})
     return embeds
 
 
@@ -131,10 +143,15 @@ def dispatch(engine: SpaceEngine, cmd: str,
             break
 
     events = engine.get_events(track=track, name=name, limit=limit)
-    plain = f"Spacer timeline ({track})"
-    if name:
-        plain += f" — “{name}”"
-    return CommandResult(plain, _slack_blocks(events), _event_embeds(events))
+
+    summary = f"Spacer timeline ({track})"
+    chips = [piece for piece in (f"name “{name}”" if name else None,
+                                 f"limit {limit}" if limit is not None else None)
+             if piece]
+    if chips:
+        summary += " · " + " · ".join(chips)
+    return CommandResult(summary, _slack_blocks(events, limit=limit, summary=summary),
+                         _event_embeds(events, limit=limit, summary=summary))
 
 
 def _help_result() -> CommandResult:
@@ -169,12 +186,13 @@ def _groq_result(cmd: str, context: dict | None) -> CommandResult:
                          [{"title": "Spacer groq", "description": msg, "color": 0x2B6CB0}])
 
 
-def _slack_blocks(events: list[dict]) -> list[dict]:
+def _slack_blocks(events: list[dict], limit: int = 20,
+                  summary: str | None = None) -> list[dict]:
     from core.utils import calculate_countdown
 
     blocks: list[dict] = [{
         "type": "header",
-        "text": {"type": "plain_text", "text": "Upcoming space events"},
+        "text": {"type": "plain_text", "text": summary or "Upcoming space events"},
     }]
     if not events:
         blocks.append({
@@ -182,7 +200,9 @@ def _slack_blocks(events: list[dict]) -> list[dict]:
             "text": {"type": "mrkdwn", "text": "_No events found for this timeframe._"},
         })
         return blocks
-    for ev in sorted(events, key=lambda e: e.get("time") or 0)[:20]:
+    cap = min(max(limit, 1), 25)
+    shown = sorted(events, key=lambda e: e.get("time") or 0)[:cap]
+    for ev in shown:
         ev_time = ev.get("time")
         ts = ev_time.strftime("%Y-%m-%d %H:%M UTC") if ev_time else "Unknown"
         countdown = ev.get("countdown") or calculate_countdown(ev_time)
@@ -196,4 +216,9 @@ def _slack_blocks(events: list[dict]) -> list[dict]:
                          f"`{ts}`  ({countdown})"),
             },
         })
+    if len(events) > cap:
+        blocks.append({"type": "section",
+                       "text": {"type": "mrkdwn",
+                                "text": f"… and `{len(events) - cap}` more — "
+                                        "try `!space list --limit N`."}})
     return blocks

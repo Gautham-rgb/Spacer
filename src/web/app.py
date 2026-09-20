@@ -21,6 +21,7 @@ import os
 import threading
 import time
 from datetime import datetime, timezone
+from fastapi import Request
 from nicegui import ui
 from core.config import CATEGORY_STYLE, DEFAULT_CATEGORY_STYLE
 from core.pyproject import spacer_section, track_cards
@@ -231,7 +232,7 @@ def _track_info(track: str) -> dict | None:
 
 
 @ui.page("/tracks/{track}")
-def track_page(track: str) -> None:
+def track_page(track: str, request: Request = None) -> None:
     _page_setup()
 
     info = _track_info(track)
@@ -244,6 +245,7 @@ def track_page(track: str) -> None:
     _header(title=f"{info['label']} — timeline", back_to="/")
     ui.label(info["desc"]).classes("text-sm text-gray-500 mt-[-12px] mb-4")
 
+    query = dict(request.query_params) if request is not None else {}
     with ui.card().classes("w-full no-shadow rounded-xl").style(
             f"background:{PANEL_COLOR}; border:1px solid {BORDER_COLOR};"):
         with ui.row().classes("w-full items-end gap-4 flex-wrap"):
@@ -252,6 +254,20 @@ def track_page(track: str) -> None:
             before = ui.input("Before (YYYY-MM-DD)").props("outlined dense").classes("flex-1")
             limit = ui.number("Limit", value=60, min=1, max=300).props(
                 "outlined dense").classes("w-32 flex-1")
+        if query.get("name"):
+            name.value = query["name"]
+        if query.get("after"):
+            after.value = query["after"]
+        if query.get("before"):
+            before.value = query["before"]
+        if query.get("limit") and str(query.get("limit")).lstrip("-").isdigit():
+            try:
+                limit.value = max(1, min(int(query["limit"]), 300))
+            except ValueError:
+                pass
+        ui.label("Shareable link flags — …&name=falcon&limit=5 (also &after= / &before=, "
+                 "mirrors `!space list --name … --limit …`)").classes(
+            "text-[11px] text-gray-500 mt-1 w-full")
 
     status = ui.label("").classes("text-sm text-gray-400")
     results = ui.column().classes("w-full")

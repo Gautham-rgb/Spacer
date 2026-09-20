@@ -58,6 +58,37 @@ def test_weather_alias_maps_to_space_weather():
     assert _last(engine)["track"] == "space_weather"
 
 
+def _fake_events(n: int) -> list[dict]:
+    from datetime import datetime, timezone
+    return [{"title": f"Event {i}", "info": "x", "category": "TEST",
+             "time": datetime(2030, 1, i % 28 + 1, tzinfo=timezone.utc)}
+            for i in range(n)]
+
+
+def test_list_output_respects_limit_and_summary_shows_flags():
+    engine = _FakeEngine()
+    engine.get_events = lambda **kw: _fake_events(3)
+    res = dispatch(engine, "probe_launch --limit 3 --name falcon")
+    assert "Spacer timeline (probe_launch)" in res.plain
+    assert "falcon" in res.plain and "limit 3" in res.plain
+    sections = [b for b in res.slack_blocks if b.get("type") == "section"]
+    assert len(sections) == 3
+    assert not any("more" in b["text"]["text"] for b in sections)
+    assert len(res.discord_embeds) == 4  # summary header + 3 events
+
+
+def test_list_truncation_note_when_limit_large():
+    engine = _FakeEngine()
+    engine.get_events = lambda **kw: _fake_events(50)
+    res = dispatch(engine, "list --limit 50")
+    sections = [b for b in res.slack_blocks if b.get("type") == "section"]
+    assert len(sections) == 26  # 25 event blocks + 1 "25 more" note
+    assert any("more" in b["text"]["text"] and "25" in b["text"]["text"]
+               for b in sections)
+    embeds = res.discord_embeds
+    assert len(embeds) == 12  # summary header + 10 cap + truncation note
+
+
 def test_launches_alias_maps_to_probe_launch():
     engine = _FakeEngine()
     dispatch(engine, "launches")
