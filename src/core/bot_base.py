@@ -13,16 +13,16 @@ from core.config import TRACKS
 from version import __version__
 
 HELP_TEXT = (
-    "*Spacer* — what you can ask (prefix with `!space`)\n"
-    "• `!space list [track] [--limit N] [--name text]` — events for a track "
-    "(all / space_weather / space_events / probe_launch / probe_events)\n"
-    "• `!space weather` — space-weather only\n"
-    "• `!space launches` — upcoming launches\n"
-    "• `!space groq <question>` — chat with the Groq assistant (remembers this "
-    "conversation; `!space groq reset` clears it)\n"
-    "• `!space update` — check if a newer release is out\n"
-    "• `!space version` — which build this is\n"
-    "• `!space help` — this message"
+    "*Spacer* commands (prefix with `!space`):\n"
+    "• `!space list [track] [--limit N] [--name text]` — list events for a "
+    "track (all / space_weather / space_events / probe_launch / probe_events)\n"
+    "• `!space weather` — shortcut for space_weather\n"
+    "• `!space launches` — shortcut for probe_launch\n"
+    "• `!space groq <question>` — ask Spacer a question (`groq reset` clears "
+    "the remembered conversation)\n"
+    "• `!space update` — check for a new release\n"
+    "• `!space version` — print the build\n"
+    "• `!space help` — list commands"
 )
 
 _TRACK_ALIASES = {
@@ -48,7 +48,7 @@ def _event_embeds(events: list[dict], limit: int = 20,
     embeds: list[dict] = []
     if summary:
         embeds.append({"title": summary, "color": 0x2B6CB0,
-                       "description": "_Upcoming space events — flags: `--limit` / `--name`._"})
+                       "description": "_Events matching your filters._"})
     if not events:
         embeds.append({"title": "Nothing scheduled in this window.",
                        "description": "_Try clearing the filters or widening the date range._",
@@ -72,8 +72,8 @@ def _event_embeds(events: list[dict], limit: int = 20,
         })
     if len(events) > cap:
         embeds.append({"title": f"… and {len(events) - cap} more",
-                       "description": "Discord caps at 10 embeds per message — "
-                                      "raise `limit` to see more in the source list.",
+                       "description": "Listed first by time; use a lower "
+                                      "--limit to show fewer.",
                        "color": 0x888888})
     return embeds
 
@@ -175,11 +175,14 @@ def _groq_result(cmd: str, context: dict | None) -> CommandResult:
     key = _conversation_key(context)
     if question.lower() in ("reset", "clear"):
         clear_conversation(key)
-        msg = "Conversation cleared — Groq starts fresh."
+        msg = "Conversation cleared."
     elif not question:
-        msg = "Ask me something — `!space groq <your question>`"
+        msg = "Ask me something, e.g. `!space groq when is the next launch?`"
     else:
         msg = groq_chat(question, key=key)
+        # Slack mrkdwn sections cap at 3000 chars; keep the reply sendable.
+        if len(msg) > 2900:
+            msg = msg[:2900].rstrip() + "\n… (truncated)"
     return CommandResult(msg,
                          [{"type": "section",
                            "text": {"type": "mrkdwn", "text": msg}}],
@@ -219,6 +222,6 @@ def _slack_blocks(events: list[dict], limit: int = 20,
     if len(events) > cap:
         blocks.append({"type": "section",
                        "text": {"type": "mrkdwn",
-                                "text": f"… and `{len(events) - cap}` more — "
-                                        "try `!space list --limit N`."}})
+                                "text": f"… and `{len(events) - cap}` more — cap "
+                                        "the list with `--limit N`."}})
     return blocks

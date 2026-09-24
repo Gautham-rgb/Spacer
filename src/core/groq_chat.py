@@ -14,9 +14,10 @@ from core.config import GROQ_API_KEY, GROQ_MODEL
 
 GROQ_CHAT_MODEL = GROQ_MODEL
 _SYSTEM = (
-    "You are a space enthusiast's assistant: friendly, concise, and focused on space, "
-    "astronomy, and science when relevant. "
-    "Don't use Markdown; use plain text and numbered lists if helpful."
+    "You are Spacer, a tool that tracks space weather, astronomy events, and "
+    "rocket launches. Answer directly in short, plain sentences. No markdown, "
+    "no emojis, no filler, and no forced enthusiasm; use a list only when it "
+    "genuinely helps."
 )
 
 # Keep the last N question/answer pairs per conversation key so the model can
@@ -76,9 +77,9 @@ def groq_chat(prompt: str, *, key: str | None = None, reset: bool = False,
         messages.append({"role": "user", "content": prompt})
         resp = client.chat.completions.create(
             model=GROQ_CHAT_MODEL,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=0.7,
+messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.6,
         )
         answer = str(resp.choices[0].message.content).strip()
         if key:

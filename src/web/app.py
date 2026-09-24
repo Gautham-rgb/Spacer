@@ -94,14 +94,41 @@ def _page_setup() -> None:
     ui.dark_mode().enable()
     ui.add_head_html(
         f"""
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
         <style>
-          html, body {{ background: {BG_COLOR}; }}
-          body {{ background:
-            radial-gradient(1200px 600px at 80% -10%, #12203a 0%, transparent 60%),
-            radial-gradient(900px 500px at -10% 110%, #101a2e 0%, transparent 55%),
-            {BG_COLOR}; }}
-          .nicegui-content {{ max-width: 900px; margin: 0 auto; padding: 24px 16px; }}
-          a {{ color: {ACCENT}; }}
+          html, body {{ height: 100%; }}
+          body {{
+            background:
+              radial-gradient(1050px 480px at 82% -8%, #16264c 0%, transparent 62%),
+              radial-gradient(950px 520px at -8% 108%, #0e1a31 0%, transparent 55%),
+              radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1.4px),
+              {BG_COLOR};
+            background-size: auto, auto, 26px 26px, auto;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: #e5e7eb;
+          }}
+          .nicegui-content {{ max-width: 920px; margin: 0 auto; padding: 28px 20px 40px; }}
+          a {{ color: {ACCENT}; text-decoration: none; }}
+          a:hover {{ text-decoration: underline; }}
+          .font-display {{ font-family: 'Space Grotesk', 'Inter', sans-serif; }}
+          .hero-accent {{
+            background: linear-gradient(110deg, {ACCENT} 0%, #9b7bff 55%, #ff9a5c 100%);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+          }}
+          .track-card, .event-card {{
+            background: {PANEL_COLOR};
+            border: 1px solid {BORDER_COLOR};
+            border-radius: 14px;
+            transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+          }}
+          .track-card:hover, .event-card:hover {{
+            border-color: {ACCENT};
+            transform: translateY(-3px);
+            box-shadow: 0 20px 44px -20px rgba(0, 0, 0, .75);
+          }}
+          .chip {{ border-radius: 999px; }}
         </style>
         """
     )
@@ -109,28 +136,39 @@ def _page_setup() -> None:
 
 def _header(title: str = SITE_NAME, back_to: str | None = None) -> None:
     if back_to:
-        ui.link("← Back", back_to).classes("text-sm")
+        with ui.row().classes("items-center gap-1 mb-4"):
+            ui.icon("arrow_back").classes("text-sm text-accent")
+            ui.link("Back", back_to).classes("text-sm")
     with ui.row().classes("w-full items-center justify-between mt-2 mb-6"):
         with ui.column().classes("gap-0"):
             with ui.row().classes("items-center gap-3"):
-                ui.icon("rocket_launch", size="30").classes("text-accent")
-                ui.label(SITE_NAME).classes("text-3xl font-black tracking-tight text-white")
+                with ui.element("div").classes("rounded-xl p-2.5").style(
+                        f"background:{PANEL_COLOR}; border:1px solid {BORDER_COLOR};"):
+                    ui.icon("rocket_launch", size="26").classes("text-accent")
+                with ui.column().classes("gap-0"):
+                    ui.label(SITE_NAME).classes(
+                        "font-display text-3xl font-bold tracking-tight text-white")
+                    ui.label("space weather · launches · flybys").classes(
+                        "text-xs text-gray-500 tracking-wide")
             if title != SITE_NAME:
-                ui.label(title).classes("text-sm mt-1")
-    ui.label(_update_status()).classes("text-xs mt-[-16px] mb-4")
+                ui.label(title).classes(
+                    "font-display text-sm mt-1 text-gray-400")
+    update = _update_status()
+    if update:
+        ui.label(update).classes(
+            "text-xs text-gray-500 bg-white/5 chip px-3 py-1 mb-4 inline-block")
 
 
 def _footer() -> None:
-    with ui.row().classes("w-full justify-center items-center mt-12 mb-2 gap-5"):
-        ui.link("Say hi on Slack", "https://app.slack.com/client/T0B9WS0J88P/C0BAFUQQCQ4",
-                new_tab=True).classes("text-sm text-accent")
-        ui.label("·").classes("text-gray-700")
-        ui.link("Talk on Discord",
-                "https://discord.com/channels/1541782807574224928/1541782808509284444",
-                new_tab=True).classes("text-sm text-accent")
-    with ui.row().classes("w-full justify-center mb-4"):
-        ui.label(f"{SITE_NAME} v{__version__} · made for Hack Club Nest").classes(
-            "text-xs text-gray-600")
+    with ui.row().classes("w-full justify-center items-center gap-2 mt-12 mb-3"):
+        ui.link("Discord", "https://discord.com/channels/1541782807574224928/1541782808509284444",
+                new_tab=True).classes("text-sm text-accent chip bg-white/5 px-4 py-1.5")
+        ui.link("Slack", "https://app.slack.com/client/T0B9WS0J88P/C0BAFUQQCQ4",
+                new_tab=True).classes("text-sm text-accent chip bg-white/5 px-4 py-1.5")
+        ui.link("GitHub", "https://github.com/Gautham-rgb/Spacer",
+                new_tab=True).classes("text-sm text-accent chip bg-white/5 px-4 py-1.5")
+    with ui.row().classes("w-full justify-center mb-4 items-center gap-2"):
+        ui.label(f"{SITE_NAME} v{__version__}").classes("text-xs text-gray-600")
 
 
 def build_event_cards(container, events: list[dict], detail_fn=None) -> None:
@@ -149,10 +187,10 @@ def build_event_cards(container, events: list[dict], detail_fn=None) -> None:
             with ui.column().classes(
                     "w-full items-center justify-center gap-2 py-16").style(
                     "grid-column: 1 / -1;"):
-                ui.icon("travel_explore", size="56").classes("text-gray-600")
+                ui.icon("travel_explore", size="56").classes("text-gray-700")
                 ui.label("Nothing scheduled in this window.").classes(
                     "text-lg text-gray-400 font-medium")
-                ui.label("Try widening the date range or clearing the filters.").classes(
+                ui.label("Try a wider date range or clear the filters.").classes(
                     "text-sm text-gray-600")
         return
 
@@ -165,25 +203,25 @@ def build_event_cards(container, events: list[dict], detail_fn=None) -> None:
             tag_bg, tag_fg = _cat_style(category)
 
             with ui.card().classes(
-                    "w-full no-shadow rounded-xl transition hover:translate-y-[-2px] "
-                    "cursor-pointer").style(
-                    f"background:{PANEL_COLOR}; border:1px solid {BORDER_COLOR};") as card:
+                    "event-card w-full no-shadow cursor-pointer").props(
+                    "flat").classes("w-full") as card:
                 with ui.row().classes("items-start justify-between w-full gap-3"):
                     with ui.column().classes("gap-1 flex-1 min-w-0"):
                         with ui.row().classes("items-center gap-2 flex-wrap"):
                             ui.label(ts).classes("text-xs text-gray-500")
                             ui.badge(category).props("outline").classes(
-                                "text-[10px] tracking-wide").style(
+                                "chip text-[10px] tracking-wide").style(
                                 f"background:{tag_bg}; color:{tag_fg};")
                         ui.label(str(ev.get("title", "Untitled"))).classes(
                             "text-lg font-semibold leading-snug text-gray-100")
                         ui.label(ev.get("info", "No details")).classes(
                             "text-sm text-gray-400 leading-relaxed")
                     ui.badge(countdown, text_color="black").props("color=primary").classes(
-                        "shrink-0 px-3 py-1").style("background:#5898d4;")
+                        "shrink-0 chip px-3 py-1").style("background:#5898d4;")
                 if detail_fn:
-                    with ui.row().classes("w-full items-center justify-end mt-2"):
-                        ui.label("Details →").classes("text-xs text-accent")
+                    with ui.row().classes("w-full items-center justify-end mt-2 gap-1"):
+                        ui.label("Open event").classes("text-xs text-accent")
+                        ui.icon("chevron_right", size="16").classes("text-accent")
                     card.on("click", lambda _ev=ev: detail_fn(_ev))
 
 
@@ -203,23 +241,30 @@ def create_app(engine: SpaceEngine | None = None):
     def root() -> None:
         _page_setup()
         _header()
-        ui.label("Choose a track to explore.").classes(
-            "text-lg text-gray-400 mb-8 text-center w-full")
+        with ui.column().classes("w-full items-center text-center gap-2 mb-10"):
+            ui.label("Every launch, storm, and flyby — "
+                     "in one place.").classes(
+                "font-display text-4xl md:text-5xl font-bold leading-tight text-white")
+            ui.label("Spacer gathers near-Earth space weather, astronomy events, "
+                     "and rocket launches from NOAA, thespacedevs, and NASA.").classes(
+                "text-base text-gray-400 max-w-xl leading-relaxed")
+            ui.label("Pick a timeline:").classes("text-sm text-gray-500 mt-4")
 
         with ui.column().classes("w-full gap-4 max-w-2xl mx-auto"):
             for card in TRACK_CARDS:
                 with ui.card().classes(
-                        "w-full no-shadow rounded-xl transition hover:translate-y-[-2px] "
-                        "cursor-pointer").style(
-                        f"background:{PANEL_COLOR}; border:1px solid {BORDER_COLOR};") as c:
+                        "track-card w-full no-shadow cursor-pointer").props(
+                        "flat").classes("w-full") as c:
                     with ui.row().classes("items-center gap-4 w-full"):
-                        ui.icon(card["icon"], size="36").classes("text-accent")
-                        with ui.column().classes("gap-0"):
+                        with ui.element("div").classes("rounded-xl p-3").style(
+                                f"background:{BG_COLOR}; border:1px solid {BORDER_COLOR};"):
+                            ui.icon(card["icon"], size="28").classes("text-accent")
+                        with ui.column().classes("gap-0 flex-1 min-w-0"):
                             ui.label(card["label"]).classes(
-                                "text-xl font-semibold text-gray-100")
-                            ui.label(card["desc"]).classes("text-sm text-gray-400")
-                    with ui.row().classes("w-full items-center justify-end mt-2"):
-                        ui.label("Explore →").classes("text-xs text-accent")
+                                "font-display text-xl font-semibold text-gray-100")
+                            ui.label(card["desc"]).classes(
+                                "text-sm text-gray-400 leading-relaxed")
+                        ui.icon("chevron_right", size="22").classes("text-gray-500")
                     c.on("click",
                         lambda _t=card["track"]: ui.navigate.to(f"/tracks/{_t}"))
         _footer()
@@ -265,9 +310,9 @@ def track_page(track: str, request: Request = None) -> None:
                 limit.value = max(1, min(int(query["limit"]), 300))
             except ValueError:
                 pass
-        ui.label("Shareable link flags — …&name=falcon&limit=5 (also &after= / &before=, "
-                 "mirrors `!space list --name … --limit …`)").classes(
-            "text-[11px] text-gray-500 mt-1 w-full")
+        ui.label("Tip: these filters work as URL flags, e.g. `?name=falcon&limit=5` "
+                 "— same as the chat `--name` / `--limit` flags (also `&after=` / "
+                 "`&before=`).").classes("text-[11px] text-gray-500 mt-1 w-full")
 
     status = ui.label("").classes("text-sm text-gray-400")
     results = ui.column().classes("w-full")
@@ -313,7 +358,7 @@ def track_page(track: str, request: Request = None) -> None:
 
     def _on_interval():
         if auto_timer.active:
-            auto_timer.interval = float(interval.value)
+            auto_timer.interval = float(interval.value or 30)
 
     with ui.row().classes("w-full items-center justify-between mt-1 flex-wrap gap-2"):
         count_label = ui.label("Events").classes("text-sm text-gray-400")
@@ -331,30 +376,37 @@ def track_page(track: str, request: Request = None) -> None:
 
 
 def _groq_card() -> None:
+    from nicegui import context
     from core.groq_chat import clear_conversation, groq_chat
+
+    # Scope conversation memory per browser tab so visitors don't share history
+    # (and one person's "Reset" can't wipe everyone else's).
+    try:
+        GROQ_KEY = f"web-{context.client.id}"
+    except Exception:  # pragma: no cover - fallback outside a request context
+        GROQ_KEY = "web-shared"
 
     with ui.card().classes("w-full no-shadow rounded-xl mt-4").style(
             f"background:{PANEL_COLOR}; border:1px solid {BORDER_COLOR};"):
         with ui.row().classes("items-center gap-2"):
             ui.icon("psychology", size="22").classes("text-accent")
-            ui.label("Ask Groq").classes("text-lg font-semibold text-gray-100")
-        ui.label("Powered by Groq — follow-up questions remember this conversation.").classes(
-            "text-xs text-gray-500")
+            ui.label("Ask Spacer").classes("text-lg font-semibold text-gray-100")
+        ui.label("Answers powered by Groq. Follow-ups keep the whole "
+                 "conversation in context.").classes("text-xs text-gray-500")
         groq_input = ui.input("Your question").props("outlined dense").classes("w-full")
         groq_out = ui.label("").style("white-space: pre-wrap").classes(
             "text-sm text-gray-300 mt-1")
-        GROQ_KEY = "web-main"
 
         def _reset() -> None:
             clear_conversation(GROQ_KEY)
-            groq_out.set_text("Conversation cleared — Groq starts fresh.")
+            groq_out.set_text("Conversation cleared.")
 
         async def _ask_groq() -> None:
             prompt = (groq_input.value or "").strip()
             if not prompt:
                 groq_out.set_text("Type a question first.")
                 return
-            groq_out.set_text("Thinking…")
+            groq_out.set_text("Querying…")
             answer = await asyncio.to_thread(groq_chat, prompt, key=GROQ_KEY)
             groq_out.set_text(answer)
 
@@ -362,7 +414,7 @@ def _groq_card() -> None:
         with ui.row().classes("items-center gap-2 mt-1"):
             ui.button("Ask", icon="send", on_click=_ask_groq).props(
                 "dense outline no-caps").classes("text-accent")
-            ui.button("Reset", icon="clear", on_click=_reset).props(
+            ui.button("Clear", icon="clear", on_click=_reset).props(
                 "dense outline no-caps").classes("text-gray-400")
 
 
@@ -426,7 +478,7 @@ def _render_event(ev: dict) -> None:
     tag_bg, tag_fg = _cat_style(category)
 
     ui.label(str(ev.get("title", "Untitled"))).classes(
-        "text-3xl font-bold text-gray-100 leading-tight mb-3")
+        "font-display text-3xl font-bold text-gray-100 leading-tight mb-3")
     with ui.row().classes("items-center gap-2 flex-wrap mb-4"):
         ui.label(ts).classes("text-sm text-gray-500")
         ui.badge(category).props("outline").classes("text-[10px] tracking-wide").style(

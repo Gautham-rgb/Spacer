@@ -74,17 +74,19 @@ class DiscordBot:
             question = (question or "").strip()
             key = f"{ctx.author.id}@{ctx.channel.id}"
             if question.lower() in ("reset", "clear"):
-                await ctx.send("Conversation cleared — Groq starts fresh.")
+                await ctx.send("Conversation cleared.")
                 clear_conversation(key)
                 return
             if not question:
-                await ctx.send("Ask me something — `/groq <your question>`")
+                await ctx.send("Ask me something, e.g. `/groq when is the next launch?`")
                 return
             try:
                 await ctx.defer()
             except Exception:  # noqa: BLE001 - deferral is best-effort
                 pass
             answer = await asyncio.to_thread(groq_chat, question, key=key)
+            if len(answer) > 1800:
+                answer = answer[:1800].rstrip() + "\n… (truncated)"
             await ctx.send(answer)
 
         return bot
